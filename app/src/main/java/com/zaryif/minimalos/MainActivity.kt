@@ -33,6 +33,7 @@ import com.zaryif.minimalos.ui.onboarding.OnboardingScreen
 import com.zaryif.minimalos.ui.settings.SettingsScreen
 import com.zaryif.minimalos.ui.theme.MinimalBlack
 import com.zaryif.minimalos.ui.theme.MinimalOSTheme
+import com.zaryif.minimalos.ui.widgets.WidgetsDeckScreen
 import kotlinx.coroutines.launch
 
 enum class ScreenState {
@@ -40,6 +41,7 @@ enum class ScreenState {
     HOME,
     APPS,
     HUB,
+    WIDGETS,
     SETTINGS
 }
 
@@ -59,7 +61,13 @@ class MainActivity : ComponentActivity() {
         appRepository = AppRepository(this)
         storageRepository = StorageRepository(this)
         contactRepository = ContactRepository(this)
-        executeCommandUseCase = ExecuteCommandUseCase(this, appRepository, storageRepository, contactRepository)
+        executeCommandUseCase = ExecuteCommandUseCase(
+            this,
+            appRepository,
+            storageRepository,
+            contactRepository,
+            userPreferences
+        )
 
         MinimalNotificationService.setMockDataIfEmpty()
 
@@ -130,9 +138,11 @@ fun MinimalAppContent(
                     installedApps = installedApps,
                     storageRepository = storageRepository,
                     contactRepository = contactRepository,
+                    userPreferences = userPreferences,
                     executeCommandUseCase = executeCommandUseCase,
                     onNavigateToApps = { currentScreen = ScreenState.APPS },
                     onNavigateToHub = { currentScreen = ScreenState.HUB },
+                    onNavigateToWidgets = { currentScreen = ScreenState.WIDGETS },
                     onNavigateToSettings = { currentScreen = ScreenState.SETTINGS },
                     onOpenMemo = { showMemoSheet = true },
                     onOpenClock = { showClockSheet = true },
@@ -154,9 +164,22 @@ fun MinimalAppContent(
                 )
             }
 
+            ScreenState.WIDGETS -> {
+                WidgetsDeckScreen(
+                    storageRepository = storageRepository,
+                    executeCommandUseCase = executeCommandUseCase,
+                    currentRestrictionMode = restrictionMode,
+                    onSelectRestrictionMode = { mode ->
+                        scope.launch { userPreferences.setRestrictionMode(mode) }
+                    },
+                    onBackToHome = { currentScreen = ScreenState.HOME }
+                )
+            }
+
             ScreenState.SETTINGS -> {
                 SettingsScreen(
                     currentMode = restrictionMode,
+                    userPreferences = userPreferences,
                     onSelectMode = { mode ->
                         scope.launch { userPreferences.setRestrictionMode(mode) }
                     },
@@ -188,6 +211,7 @@ fun MinimalAppContent(
 
     if (showAskSheet) {
         MinimalAskSheet(
+            userPreferences = userPreferences,
             onDismiss = { showAskSheet = false }
         )
     }

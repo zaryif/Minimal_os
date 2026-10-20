@@ -2,8 +2,12 @@ package com.zaryif.minimalos.ui.settings
 
 import android.app.WallpaperManager
 import android.content.Intent
+import android.net.Uri
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,28 +32,49 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zaryif.minimalos.data.preferences.AiProvider
+import com.zaryif.minimalos.data.preferences.UserPreferences
 import com.zaryif.minimalos.domain.model.RestrictionMode
 import com.zaryif.minimalos.ui.components.MinimalCard
 import com.zaryif.minimalos.ui.theme.MinimalBlack
+import com.zaryif.minimalos.ui.theme.MinimalDarkCardBg
 import com.zaryif.minimalos.ui.theme.MinimalDarkGray
 import com.zaryif.minimalos.ui.theme.MinimalGray
 import com.zaryif.minimalos.ui.theme.MinimalRed
 import com.zaryif.minimalos.ui.theme.MinimalWhite
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
     currentMode: RestrictionMode,
+    userPreferences: UserPreferences,
     onSelectMode: (RestrictionMode) -> Unit,
     onResetOnboarding: () -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val selectedAiProvider by userPreferences.aiProvider.collectAsState(initial = AiProvider.GEMINI)
+    val customWallpaperUri by userPreferences.customWallpaperUri.collectAsState(initial = null)
+
+    // Photo Gallery Wallpaper Picker
+    val wallpaperPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        scope.launch {
+            userPreferences.setCustomWallpaperUri(uri?.toString())
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -118,11 +144,51 @@ fun SettingsScreen(
                 onClick = { onSelectMode(RestrictionMode.UNRESTRICTED) }
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-            // Section: Appearance & Wallpaper
+            // Section: AI Assistant Provider
             Text(
-                text = "CUSTOMIZATION",
+                text = "DEFAULT AI ASSISTANT",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = MinimalRed,
+                letterSpacing = 1.sp
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AiProvider.entries.forEach { provider ->
+                    val isSelected = provider == selectedAiProvider
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isSelected) MinimalRed else MinimalDarkCardBg)
+                            .border(1.dp, if (isSelected) MinimalRed else MinimalDarkGray, RoundedCornerShape(8.dp))
+                            .clickable {
+                                scope.launch { userPreferences.setAiProvider(provider) }
+                            }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = provider.displayName.split(" ").first(),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MinimalWhite
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Section: Wallpaper & Customization
+            Text(
+                text = "WALLPAPER & APPEARANCE",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = MinimalRed,
@@ -131,8 +197,29 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             SettingsActionRow(
-                title = "change wallpaper",
-                subtitle = "set AMOLED black or custom photo wallpaper",
+                title = "choose wallpaper from photos",
+                subtitle = if (customWallpaperUri != null) "custom photo active (tap to change)" else "select an image from your gallery",
+                onClick = {
+                    wallpaperPickerLauncher.launch("image/*")
+                }
+            )
+
+            if (customWallpaperUri != null) {
+                HorizontalDivider(color = MinimalDarkGray, thickness = 0.5.dp)
+                SettingsActionRow(
+                    title = "reset to pure AMOLED black",
+                    subtitle = "restore default zero-distraction black background",
+                    onClick = {
+                        scope.launch { userPreferences.setCustomWallpaperUri(null) }
+                    }
+                )
+            }
+
+            HorizontalDivider(color = MinimalDarkGray, thickness = 0.5.dp)
+
+            SettingsActionRow(
+                title = "system live wallpaper picker",
+                subtitle = "launch Android system wallpaper settings",
                 onClick = {
                     try {
                         val intent = Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER)
@@ -144,7 +231,17 @@ fun SettingsScreen(
                 }
             )
 
-            HorizontalDivider(color = MinimalDarkGray, thickness = 0.5.dp)
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Section: System
+            Text(
+                text = "SYSTEM",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = MinimalRed,
+                letterSpacing = 1.sp
+            )
+            Spacer(modifier = Modifier.height(12.dp))
 
             SettingsActionRow(
                 title = "set as default launcher",
@@ -179,7 +276,7 @@ fun SettingsScreen(
                 onClick = onResetOnboarding
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             // Section: Command Symbols & Keywords Reference
             Text(
@@ -196,13 +293,13 @@ fun SettingsScreen(
                 Pair("# or call", "call — dial phone number or contact directly"),
                 Pair("- or todo", "to-do — add task item to Minimal Memo"),
                 Pair("! or note", "note — saves to Minimal Memo & Google Keep"),
-                Pair("* or event", "event — schedule event directly in Google Calendar"),
+                Pair("* or event", "event — schedule event directly in Google Calendar (with natural time)"),
                 Pair("+ or timer", "timer — set countdown timer instantly"),
                 Pair(": or alarm", "alarm — set alarm instantly (e.g. :7:30am)"),
                 Pair("^ or drive", "drive — search inside Google Drive"),
                 Pair("& or mail", "email — compose message via Gmail"),
-                Pair("? or ask", "ask — web query without opening apps"),
-                Pair("(text)", "search installed apps & launch on Enter")
+                Pair("? or ask", "ask — queries your selected AI assistant (Gemini/ChatGPT/Claude)"),
+                Pair("(text)", "search installed apps or searches web automatically")
             )
 
             symbols.forEach { (sym, desc) ->
@@ -214,10 +311,10 @@ fun SettingsScreen(
                 ) {
                     Text(
                         text = sym,
-                        fontSize = 15.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         color = MinimalRed,
-                        modifier = Modifier.width(90.dp)
+                        modifier = Modifier.width(95.dp)
                     )
                     Text(
                         text = desc,
@@ -240,7 +337,7 @@ fun SettingsScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Minimal OS Launcher v1.1.0\nCreated by MD. Zarif Azfar\nPure text-first minimalist experience with full terminal capabilities.",
+                text = "Minimal OS Launcher v1.2.0\nCreated by MD. Zarif Azfar\nPure text-first minimalist experience with full automation capabilities.",
                 fontSize = 13.sp,
                 color = MinimalGray,
                 lineHeight = 18.sp

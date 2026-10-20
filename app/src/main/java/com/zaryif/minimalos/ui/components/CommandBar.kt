@@ -160,7 +160,6 @@ fun CommandBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
                 .clip(RoundedCornerShape(14.dp))
                 .background(MinimalCardBg)
                 .border(
@@ -168,7 +167,7 @@ fun CommandBar(
                     if (hasPrefix) MinimalRed else MinimalDarkGray,
                     RoundedCornerShape(14.dp)
                 )
-                .padding(horizontal = 14.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             Row(
@@ -194,10 +193,13 @@ fun CommandBar(
                 }
 
                 // Text field
-                Box(modifier = Modifier.weight(1f)) {
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterStart
+                ) {
                     if (query.isEmpty()) {
                         Text(
-                            text = "type to do things or search apps…",
+                            text = "type to do things or search…",
                             style = TextStyle(
                                 fontSize = 14.sp,
                                 color = MinimalGray,
@@ -209,16 +211,22 @@ fun CommandBar(
                         value = query,
                         onValueChange = onQueryChange,
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
+                        maxLines = 2,
                         cursorBrush = SolidColor(MinimalRed),
                         textStyle = TextStyle(
                             fontSize = 15.sp,
                             color = MinimalWhite,
-                            fontWeight = FontWeight.Normal
+                            fontWeight = FontWeight.Normal,
+                            lineHeight = 20.sp
                         ),
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Go
                         ),
+                        keyboardActions = KeyboardActions(
+                            onGo = { onExecute(query) }
+                        )
+                    )
+                }
                         keyboardActions = KeyboardActions(
                             onGo = { onExecute(query) }
                         )

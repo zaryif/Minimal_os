@@ -24,7 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
@@ -140,7 +140,7 @@ private fun StepYourApps(onNext: () -> Unit) {
         Spacer(modifier = Modifier.height(10.dp))
         MinimalCard(
             title = "Minimal Memo",
-            icon = Icons.Default.Mic,
+            icon = Icons.Default.EditNote,
             iconColor = MinimalRed
         )
 
