@@ -227,11 +227,6 @@ fun CommandBar(
                         )
                     )
                 }
-                        keyboardActions = KeyboardActions(
-                            onGo = { onExecute(query) }
-                        )
-                    )
-                }
 
                 // Clear or Execute button
                 if (query.isNotEmpty()) {
