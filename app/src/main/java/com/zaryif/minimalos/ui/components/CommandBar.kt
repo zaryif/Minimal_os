@@ -22,6 +22,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -37,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zaryif.minimalos.domain.model.AppInfo
 import com.zaryif.minimalos.domain.model.CommandType
+import com.zaryif.minimalos.domain.model.Contact
 import com.zaryif.minimalos.domain.parser.CommandParser
 import com.zaryif.minimalos.ui.theme.MinimalCardBg
 import com.zaryif.minimalos.ui.theme.MinimalDarkGray
@@ -51,13 +54,69 @@ fun CommandBar(
     onExecute: (String) -> Unit,
     matchingApps: List<AppInfo>,
     onAppSelected: (AppInfo) -> Unit,
+    matchingContacts: List<Contact>,
+    onContactSelected: (Contact) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val command = CommandParser.parse(query)
     val hasPrefix = command.type != CommandType.SEARCH && query.isNotEmpty()
+    val isCallingOrMessaging = command.type == CommandType.CALL || command.type == CommandType.MESSAGE
 
     Column(modifier = modifier.fillMaxWidth()) {
-        // App auto-complete suggestions if searching apps
+        // 1. Contacts auto-complete suggestions if calling or messaging
+        AnimatedVisibility(
+            visible = isCallingOrMessaging && matchingContacts.isNotEmpty(),
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MinimalCardBg)
+                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
+            ) {
+                matchingContacts.take(4).forEach { contact ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onContactSelected(contact) }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = MinimalRed,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = contact.name,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MinimalWhite
+                            )
+                            Text(
+                                text = contact.phoneNumber,
+                                fontSize = 12.sp,
+                                color = MinimalGray
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.Phone,
+                            contentDescription = "Call",
+                            tint = MinimalRed,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // 2. App auto-complete suggestions if searching apps
         AnimatedVisibility(
             visible = !hasPrefix && query.isNotBlank() && matchingApps.isNotEmpty(),
             enter = fadeIn(),
@@ -97,7 +156,7 @@ fun CommandBar(
             }
         }
 
-        // Main input container
+        // 3. Main input container
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -116,7 +175,7 @@ fun CommandBar(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Command badge if active prefix
+                // Command badge if active prefix or keyword detected
                 if (hasPrefix) {
                     Box(
                         modifier = Modifier
@@ -138,9 +197,9 @@ fun CommandBar(
                 Box(modifier = Modifier.weight(1f)) {
                     if (query.isEmpty()) {
                         Text(
-                            text = "type to do things…",
+                            text = "type to do things or search apps…",
                             style = TextStyle(
-                                fontSize = 15.sp,
+                                fontSize = 14.sp,
                                 color = MinimalGray,
                                 fontWeight = FontWeight.Normal
                             )

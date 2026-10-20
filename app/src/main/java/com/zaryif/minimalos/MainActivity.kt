@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.zaryif.minimalos.data.preferences.UserPreferences
 import com.zaryif.minimalos.data.repository.AppRepository
+import com.zaryif.minimalos.data.repository.ContactRepository
 import com.zaryif.minimalos.data.repository.StorageRepository
 import com.zaryif.minimalos.domain.model.RestrictionMode
 import com.zaryif.minimalos.domain.usecase.ExecuteCommandUseCase
@@ -47,6 +48,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var userPreferences: UserPreferences
     private lateinit var appRepository: AppRepository
     private lateinit var storageRepository: StorageRepository
+    private lateinit var contactRepository: ContactRepository
     private lateinit var executeCommandUseCase: ExecuteCommandUseCase
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,7 +58,8 @@ class MainActivity : ComponentActivity() {
         userPreferences = UserPreferences(this)
         appRepository = AppRepository(this)
         storageRepository = StorageRepository(this)
-        executeCommandUseCase = ExecuteCommandUseCase(this, appRepository, storageRepository)
+        contactRepository = ContactRepository(this)
+        executeCommandUseCase = ExecuteCommandUseCase(this, appRepository, storageRepository, contactRepository)
 
         MinimalNotificationService.setMockDataIfEmpty()
 
@@ -70,6 +73,7 @@ class MainActivity : ComponentActivity() {
                         userPreferences = userPreferences,
                         appRepository = appRepository,
                         storageRepository = storageRepository,
+                        contactRepository = contactRepository,
                         executeCommandUseCase = executeCommandUseCase
                     )
                 }
@@ -83,6 +87,7 @@ fun MinimalAppContent(
     userPreferences: UserPreferences,
     appRepository: AppRepository,
     storageRepository: StorageRepository,
+    contactRepository: ContactRepository,
     executeCommandUseCase: ExecuteCommandUseCase
 ) {
     val scope = rememberCoroutineScope()
@@ -123,6 +128,8 @@ fun MinimalAppContent(
                 HomeScreen(
                     restrictionMode = restrictionMode,
                     installedApps = installedApps,
+                    storageRepository = storageRepository,
+                    contactRepository = contactRepository,
                     executeCommandUseCase = executeCommandUseCase,
                     onNavigateToApps = { currentScreen = ScreenState.APPS },
                     onNavigateToHub = { currentScreen = ScreenState.HUB },

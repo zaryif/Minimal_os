@@ -1,5 +1,7 @@
 package com.zaryif.minimalos.ui.hub
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -24,6 +26,7 @@ import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -43,6 +46,8 @@ import androidx.compose.ui.unit.sp
 import com.zaryif.minimalos.domain.model.NotificationCategory
 import com.zaryif.minimalos.domain.model.NotificationItem
 import com.zaryif.minimalos.service.MinimalNotificationService
+import com.zaryif.minimalos.ui.components.ButtonStyle
+import com.zaryif.minimalos.ui.components.MinimalButton
 import com.zaryif.minimalos.ui.components.MinimalCard
 import com.zaryif.minimalos.ui.theme.MinimalBlack
 import com.zaryif.minimalos.ui.theme.MinimalGray
@@ -57,6 +62,7 @@ fun HubScreen(
     val context = LocalContext.current
     val notifications by MinimalNotificationService.notifications.collectAsState()
     var selectedCategory by remember { mutableStateOf(NotificationCategory.ALL) }
+    val isPermissionGranted = remember { MinimalNotificationService.isPermissionGranted(context) }
 
     val categories = NotificationCategory.entries
 
@@ -110,7 +116,7 @@ fun HubScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = "messages, calls, mail and app alerts in one list, so\nthere's one place to look rather than nine.",
                 fontSize = 13.sp,
@@ -118,7 +124,24 @@ fun HubScreen(
                 lineHeight = 18.sp
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            // Permission status banner if listener service is disabled
+            if (!isPermissionGranted) {
+                Spacer(modifier = Modifier.height(14.dp))
+                MinimalCard(
+                    title = "notification access required",
+                    subtitle = "tap to grant system permission so Hub receives alerts live",
+                    icon = Icons.Default.Warning,
+                    iconColor = MinimalRed,
+                    onClick = {
+                        val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(intent)
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Category Filter Tabs
             Row(
@@ -127,8 +150,16 @@ fun HubScreen(
             ) {
                 categories.forEach { cat ->
                     val isSelected = cat == selectedCategory
+                    val count = if (cat == NotificationCategory.ALL) {
+                        notifications.size
+                    } else if (cat == NotificationCategory.FLAGGED) {
+                        notifications.count { it.isFlagged }
+                    } else {
+                        notifications.count { it.category == cat }
+                    }
+
                     Text(
-                        text = cat.displayName,
+                        text = if (count > 0) "${cat.displayName} ($count)" else cat.displayName,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (isSelected) MinimalWhite else MinimalGray,
@@ -137,7 +168,7 @@ fun HubScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Notifications List
             if (filteredList.isEmpty()) {
@@ -156,7 +187,7 @@ fun HubScreen(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(filteredList, key = { it.id }) { item ->
+                    items(filteredList, key = { it.key.ifEmpty { it.id.toString() } }) { item ->
                         val icon = when (item.category) {
                             NotificationCategory.MESSAGE -> Icons.Default.ChatBubbleOutline
                             NotificationCategory.CALLS -> Icons.Default.Phone
@@ -171,25 +202,60 @@ fun HubScreen(
                             iconColor = MinimalRed,
                             trailingText = formatTimestamp(item.timestamp),
                             onClick = {
-                                val launchIntent = context.packageManager.getLaunchIntentForPackage(item.packageName)
-                                launchIntent?.let { context.startActivity(it) }
+                                // Try dispatching the pending intent directly or launch app
+                                if (item.pendingIntent != null) {
+                                    try {
+                                        item.pendingIntent.send()
+                                    } catch (_: Exception) {
+                                        val launchIntent = context.packageManager.getLaunchIntentForPackage(item.packageName)
+                                        launchIntent?.let { context.startActivity(it) }
+                                    }
+                                } else {
+                                    val launchIntent = context.packageManager.getLaunchIntentForPackage(item.packageName)
+                                    launchIntent?.let { context.startActivity(it) }
+                                }
                             }
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Bottom gesture hint
-            Text(
-                text = "← SWIPE LEFT FOR HOME",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
-                color = MinimalRed,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
+            // Clear All / Dismiss button
+            if (filteredList.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "clear alerts",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MinimalGray,
+                        modifier = Modifier.clickable {
+                            filteredList.forEach { MinimalNotificationService.dismiss(it.key) }
+                        }
+                    )
+                    Text(
+                        text = "← SWIPE LEFT FOR HOME",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        color = MinimalRed
+                    )
+                }
+            } else {
+                Text(
+                    text = "← SWIPE LEFT FOR HOME",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    color = MinimalRed,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            }
         }
     }
 }

@@ -9,7 +9,9 @@ enum class CommandType(val symbol: Char, val displayName: String) {
     TIMER('+', "timer"),
     ALARM(':', "alarm"),
     ASK('?', "ask"),
-    SEARCH('\u0000', "search"); // No symbol = app search
+    DRIVE('^', "drive"),
+    EMAIL('&', "email"),
+    SEARCH('\u0000', "search");
 
     companion object {
         fun fromSymbol(char: Char): CommandType? {
@@ -21,5 +23,6 @@ enum class CommandType(val symbol: Char, val displayName: String) {
 data class Command(
     val type: CommandType,
     val rawInput: String,
-    val argument: String
+    val argument: String,
+    val targetAppPackage: String? = null
 )

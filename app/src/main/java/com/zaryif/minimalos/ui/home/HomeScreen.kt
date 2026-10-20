@@ -1,9 +1,8 @@
 package com.zaryif.minimalos.ui.home
 
 import android.content.Context
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import android.content.Intent
+import android.provider.CalendarContract
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,6 +32,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,11 +46,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zaryif.minimalos.data.repository.ContactRepository
+import com.zaryif.minimalos.data.repository.StorageRepository
 import com.zaryif.minimalos.domain.model.AppInfo
+import com.zaryif.minimalos.domain.model.Contact
 import com.zaryif.minimalos.domain.model.RestrictionMode
 import com.zaryif.minimalos.domain.usecase.CommandResult
 import com.zaryif.minimalos.domain.usecase.ExecuteCommandUseCase
 import com.zaryif.minimalos.ui.components.CommandBar
+import com.zaryif.minimalos.ui.components.MinimalHomeWidgets
 import com.zaryif.minimalos.ui.theme.MinimalBlack
 import com.zaryif.minimalos.ui.theme.MinimalDarkGray
 import com.zaryif.minimalos.ui.theme.MinimalGray
@@ -65,6 +70,8 @@ import java.util.Locale
 fun HomeScreen(
     restrictionMode: RestrictionMode,
     installedApps: List<AppInfo>,
+    storageRepository: StorageRepository,
+    contactRepository: ContactRepository,
     executeCommandUseCase: ExecuteCommandUseCase,
     onNavigateToApps: () -> Unit,
     onNavigateToHub: () -> Unit,
@@ -77,8 +84,11 @@ fun HomeScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val todos by storageRepository.todos.collectAsState()
+
     var query by remember { mutableStateOf("") }
     var matchingApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
+    var matchingContacts by remember { mutableStateOf<List<Contact>>(emptyList()) }
 
     // Live clock
     var currentTime by remember { mutableStateOf("") }
@@ -95,15 +105,44 @@ fun HomeScreen(
         }
     }
 
-    // Filter apps as query changes
+    // Dynamic autocomplete for apps and contacts as query changes
     LaunchedEffect(query) {
+        val lower = query.lowercase().trim()
+
+        // 1. Contacts search for calling/messaging
+        matchingContacts = if (lower.startsWith("#") || lower.startsWith("call ") || lower.startsWith("dial ") ||
+            lower.startsWith("@") || lower.startsWith("msg ") || lower.startsWith("sms ")
+        ) {
+            val contactQuery = when {
+                lower.startsWith("#") || lower.startsWith("@") -> lower.drop(1).trim()
+                lower.startsWith("call ") -> lower.removePrefix("call ").trim()
+                lower.startsWith("dial ") -> lower.removePrefix("dial ").trim()
+                lower.startsWith("msg ") -> lower.removePrefix("msg ").trim()
+                lower.startsWith("sms ") -> lower.removePrefix("sms ").trim()
+                else -> ""
+            }
+            if (contactQuery.isNotEmpty()) {
+                contactRepository.searchContacts(contactQuery)
+            } else {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+
+        // 2. Apps search
         matchingApps = if (query.isNotBlank() && !query.startsWith("@") &&
             !query.startsWith("#") && !query.startsWith("-") &&
             !query.startsWith("!") && !query.startsWith("*") &&
             !query.startsWith("+") && !query.startsWith(":") &&
-            !query.startsWith("?")
+            !query.startsWith("?") && !query.startsWith("^") &&
+            !query.startsWith("&") && !lower.startsWith("call ") &&
+            !lower.startsWith("dial ") && !lower.startsWith("msg ") &&
+            !lower.startsWith("note ") && !lower.startsWith("todo ") &&
+            !lower.startsWith("event ") && !lower.startsWith("alarm ") &&
+            !lower.startsWith("timer ") && !lower.startsWith("drive ") &&
+            !lower.startsWith("email ")
         ) {
-            val lower = query.lowercase()
             installedApps.filter { it.label.lowercase().contains(lower) }
         } else {
             emptyList()
@@ -116,6 +155,7 @@ fun HomeScreen(
             .background(MinimalBlack)
             .statusBarsPadding()
             .navigationBarsPadding()
+            .imePadding() // Ensures command bar floats cleanly above on-screen keyboard
             .pointerInput(Unit) {
                 detectDragGestures { _, dragAmount ->
                     val (x, y) = dragAmount
@@ -129,19 +169,18 @@ fun HomeScreen(
                     }
                 }
             }
-            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .padding(horizontal = 24.dp, vertical = 14.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Top Bar: Restriction Badge + Mini Apps Shortcuts
+            // Top Bar: Restriction Badge + Mini Apps
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Restriction indicator
                 if (restrictionMode != RestrictionMode.UNRESTRICTED) {
                     Box(
                         modifier = Modifier
@@ -197,34 +236,51 @@ fun HomeScreen(
                 }
             }
 
-            // Center: Big Minimalist Clock & Date
+            // Center Area: Minimal Clock + Live Home Widgets
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = currentTime,
-                    fontSize = 76.sp,
+                    fontSize = 72.sp,
                     fontWeight = FontWeight.Light,
                     letterSpacing = (-2).sp,
                     color = MinimalWhite
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = currentDate,
-                    fontSize = 15.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Normal,
                     color = MinimalGray
                 )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Minimal Home Widgets (To-Dos & Calendar/Status)
+                MinimalHomeWidgets(
+                    todos = todos,
+                    onToggleTodo = { id -> storageRepository.toggleTodo(id) },
+                    onOpenMemo = onOpenMemo,
+                    onOpenCalendar = {
+                        val calIntent = Intent(Intent.ACTION_VIEW).apply {
+                            data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").build()
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        try {
+                            context.startActivity(calIntent)
+                        } catch (_: Exception) {}
+                    }
+                )
             }
 
-            // Bottom Section: Swipe Hints & Command Bar
+            // Bottom Area: Hints + CommandBar
             Column(modifier = Modifier.fillMaxWidth()) {
-                // Subtle swipe gestures hint
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 12.dp),
+                        .padding(bottom = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
@@ -241,7 +297,7 @@ fun HomeScreen(
                     )
                 }
 
-                // Command Bar
+                // Command Bar with live contacts and apps autocomplete
                 CommandBar(
                     query = query,
                     onQueryChange = { query = it },
@@ -265,12 +321,16 @@ fun HomeScreen(
                         query = ""
                         val launchIntent = context.packageManager.getLaunchIntentForPackage(app.packageName)
                         launchIntent?.let { context.startActivity(it) }
+                    },
+                    matchingContacts = matchingContacts,
+                    onContactSelected = { contact ->
+                        query = ""
+                        executeCommandUseCase.execute("#${contact.phoneNumber}")
                     }
                 )
             }
         }
 
-        // Snackbar for command feedback
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.TopCenter)

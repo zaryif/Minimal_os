@@ -1,5 +1,6 @@
 package com.zaryif.minimalos.ui.settings
 
+import android.app.WallpaperManager
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.background
@@ -119,15 +120,31 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Section: System & Defaults
+            // Section: Appearance & Wallpaper
             Text(
-                text = "SYSTEM",
+                text = "CUSTOMIZATION",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = MinimalRed,
                 letterSpacing = 1.sp
             )
             Spacer(modifier = Modifier.height(12.dp))
+
+            SettingsActionRow(
+                title = "change wallpaper",
+                subtitle = "set AMOLED black or custom photo wallpaper",
+                onClick = {
+                    try {
+                        val intent = Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER)
+                        context.startActivity(intent)
+                    } catch (_: Exception) {
+                        val intent = Intent(Intent.ACTION_SET_WALLPAPER)
+                        context.startActivity(Intent.createChooser(intent, "Choose Wallpaper"))
+                    }
+                }
+            )
+
+            HorizontalDivider(color = MinimalDarkGray, thickness = 0.5.dp)
 
             SettingsActionRow(
                 title = "set as default launcher",
@@ -164,9 +181,9 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Section: Command Symbols Reference
+            // Section: Command Symbols & Keywords Reference
             Text(
-                text = "COMMAND REFERENCE",
+                text = "COMMAND REFERENCE (SYMBOLS & WORDS)",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = MinimalRed,
@@ -175,14 +192,17 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             val symbols = listOf(
-                Pair("@", "message — compose SMS directly"),
-                Pair("#", "call — dial phone number or contact"),
-                Pair("-", "to-do — add quick task item"),
-                Pair("!", "note — save note into Minimal Memo"),
-                Pair("*", "event — schedule calendar event"),
-                Pair("+", "timer — set countdown timer (e.g. +5m)"),
-                Pair(":", "alarm — set alarm (e.g. :7:30am)"),
-                Pair("?", "ask — web query without opening apps")
+                Pair("@ or msg", "message — compose SMS directly to contact"),
+                Pair("# or call", "call — dial phone number or contact directly"),
+                Pair("- or todo", "to-do — add task item to Minimal Memo"),
+                Pair("! or note", "note — saves to Minimal Memo & Google Keep"),
+                Pair("* or event", "event — schedule event directly in Google Calendar"),
+                Pair("+ or timer", "timer — set countdown timer instantly"),
+                Pair(": or alarm", "alarm — set alarm instantly (e.g. :7:30am)"),
+                Pair("^ or drive", "drive — search inside Google Drive"),
+                Pair("& or mail", "email — compose message via Gmail"),
+                Pair("? or ask", "ask — web query without opening apps"),
+                Pair("(text)", "search installed apps & launch on Enter")
             )
 
             symbols.forEach { (sym, desc) ->
@@ -194,15 +214,16 @@ fun SettingsScreen(
                 ) {
                     Text(
                         text = sym,
-                        fontSize = 18.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = MinimalRed,
-                        modifier = Modifier.width(30.dp)
+                        modifier = Modifier.width(90.dp)
                     )
                     Text(
                         text = desc,
                         fontSize = 13.sp,
-                        color = MinimalGray
+                        color = MinimalGray,
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
@@ -219,7 +240,7 @@ fun SettingsScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Minimal OS Launcher v1.0.0\nCreated by zaryif\nPure text-first minimalist experience.",
+                text = "Minimal OS Launcher v1.1.0\nCreated by MD. Zarif Azfar\nPure text-first minimalist experience with full terminal capabilities.",
                 fontSize = 13.sp,
                 color = MinimalGray,
                 lineHeight = 18.sp

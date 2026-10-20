@@ -1,8 +1,11 @@
 package com.zaryif.minimalos.service
 
 import android.app.Notification
+import android.content.Context
+import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import androidx.core.app.NotificationManagerCompat
 import com.zaryif.minimalos.domain.model.NotificationCategory
 import com.zaryif.minimalos.domain.model.NotificationItem
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,8 +14,19 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class MinimalNotificationService : NotificationListenerService() {
 
+    override fun onCreate() {
+        super.onCreate()
+        instance = this
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (instance == this) instance = null
+    }
+
     override fun onListenerConnected() {
         super.onListenerConnected()
+        instance = this
         refreshActiveNotifications()
     }
 
@@ -23,7 +37,7 @@ class MinimalNotificationService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         super.onNotificationRemoved(sbn)
-        sbn?.let { removeNotification(it.id) }
+        sbn?.let { removeNotification(it.key) }
     }
 
     private fun addNotification(sbn: StatusBarNotification) {
@@ -33,26 +47,35 @@ class MinimalNotificationService : NotificationListenerService() {
         val pkg = sbn.packageName
 
         if (title.isBlank() && text.isBlank()) return
-        if (pkg == packageName) return // Ignore self
+        if (pkg == packageName) return
 
         val category = categorize(pkg, sbn.notification.category)
 
         val item = NotificationItem(
             id = sbn.id,
+            key = sbn.key,
             appName = getAppName(pkg),
             title = title,
             content = text,
             timestamp = sbn.postTime,
             packageName = pkg,
-            category = category
+            category = category,
+            pendingIntent = sbn.notification.contentIntent
         )
 
-        val current = _notifications.value.filterNot { it.id == sbn.id }
+        val current = _notifications.value.filterNot { it.key == sbn.key }
         _notifications.value = listOf(item) + current
     }
 
-    private fun removeNotification(id: Int) {
-        _notifications.value = _notifications.value.filterNot { it.id == id }
+    private fun removeNotification(key: String) {
+        _notifications.value = _notifications.value.filterNot { it.key == key }
+    }
+
+    fun dismissNotification(key: String) {
+        try {
+            cancelNotification(key)
+        } catch (_: Exception) {}
+        removeNotification(key)
     }
 
     private fun refreshActiveNotifications() {
@@ -71,12 +94,14 @@ class MinimalNotificationService : NotificationListenerService() {
                 list.add(
                     NotificationItem(
                         id = sbn.id,
+                        key = sbn.key,
                         appName = getAppName(pkg),
                         title = title,
                         content = text,
                         timestamp = sbn.postTime,
                         packageName = pkg,
-                        category = category
+                        category = category,
+                        pendingIntent = sbn.notification.contentIntent
                     )
                 )
             }
@@ -116,8 +141,28 @@ class MinimalNotificationService : NotificationListenerService() {
     }
 
     companion object {
+        var instance: MinimalNotificationService? = null
+            private set
+
         private val _notifications = MutableStateFlow<List<NotificationItem>>(emptyList())
         val notifications: StateFlow<List<NotificationItem>> = _notifications.asStateFlow()
+
+        fun isPermissionGranted(context: Context): Boolean {
+            return NotificationManagerCompat.getEnabledListenerPackages(context)
+                .contains(context.packageName)
+        }
+
+        fun toggleFlag(key: String) {
+            _notifications.value = _notifications.value.map {
+                if (it.key == key) it.copy(isFlagged = !it.isFlagged) else it
+            }
+        }
+
+        fun dismiss(key: String) {
+            instance?.dismissNotification(key) ?: run {
+                _notifications.value = _notifications.value.filterNot { it.key == key }
+            }
+        }
 
         fun setMockDataIfEmpty() {
             if (_notifications.value.isEmpty()) {
@@ -125,6 +170,7 @@ class MinimalNotificationService : NotificationListenerService() {
                 _notifications.value = listOf(
                     NotificationItem(
                         id = 1,
+                        key = "mock_1",
                         appName = "Messages",
                         title = "jason m.",
                         content = "on my way",
@@ -134,6 +180,7 @@ class MinimalNotificationService : NotificationListenerService() {
                     ),
                     NotificationItem(
                         id = 2,
+                        key = "mock_2",
                         appName = "Phone",
                         title = "mum",
                         content = "missed call",
@@ -143,6 +190,7 @@ class MinimalNotificationService : NotificationListenerService() {
                     ),
                     NotificationItem(
                         id = 3,
+                        key = "mock_3",
                         appName = "Gmail",
                         title = "amara w.",
                         content = "lunch thursday?",
