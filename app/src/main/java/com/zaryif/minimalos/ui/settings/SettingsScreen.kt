@@ -104,7 +104,7 @@ fun SettingsScreen(
     val showCommandFeedback by userPreferences.showCommandFeedback.collectAsState(initial = true)
     val customWallpaperUri by userPreferences.customWallpaperUri.collectAsState(initial = null)
     val favoriteAppPackages by userPreferences.favoriteApps.collectAsState(initial = emptySet())
-    val currentThemeId by userPreferences.themeId.collectAsState(initial = "AMOLED_RED")
+    val currentThemeId by userPreferences.themeId.collectAsState(initial = "RABBIT_ORANGE")
     val homeWidgets by userPreferences.homeWidgets.collectAsState(initial = UserPreferences.DEFAULT_HOME_WIDGETS)
     val deckWidgetsOrder by userPreferences.deckWidgetsOrder.collectAsState(initial = UserPreferences.DEFAULT_DECK_WIDGETS)
     val customCommands by userPreferences.customCommands.collectAsState(initial = emptyMap())
@@ -1013,6 +1013,18 @@ fun SettingsScreen(
                 onClick = {
                     val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
                     context.startActivity(intent)
+                }
+            )
+
+            HorizontalDivider(color = MinimalDarkGray, thickness = 0.5.dp)
+
+            SettingsActionRow(
+                title = "replay onboarding walkthrough",
+                subtitle = "launch initial gestures and command tutorial",
+                onClick = {
+                    scope.launch {
+                        userPreferences.setOnboardingCompleted(false)
+                    }
                 }
             )
 

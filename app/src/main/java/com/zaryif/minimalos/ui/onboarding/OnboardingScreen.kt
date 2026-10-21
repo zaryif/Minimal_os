@@ -145,8 +145,7 @@ private fun StepYourApps(onNext: () -> Unit) {
             iconColor = MinimalRed
         )
 
-        Spacer(modifier = Modifier.weight(1f))
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
         MinimalButton(
             text = "next",
@@ -221,8 +220,7 @@ private fun StepTypeToDoThings(onNext: () -> Unit) {
             fontFamily = AppleSanFranciscoFontFamily
         )
 
-        Spacer(modifier = Modifier.weight(1f))
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
         MinimalButton(
             text = "next",
@@ -351,8 +349,7 @@ private fun StepHub(onNext: () -> Unit) {
             )
         }
 
-        Spacer(modifier = Modifier.weight(1f))
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
         MinimalButton(
             text = "next",
@@ -435,8 +432,7 @@ private fun StepDeck(onNext: () -> Unit) {
             )
         }
 
-        Spacer(modifier = Modifier.weight(1f))
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
         MinimalButton(
             text = "next",
@@ -499,8 +495,7 @@ private fun StepRestrictions(
             onClick = { onSelectMode(RestrictionMode.UNRESTRICTED) }
         )
 
-        Spacer(modifier = Modifier.weight(1f))
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
         MinimalButton(
             text = "setup",

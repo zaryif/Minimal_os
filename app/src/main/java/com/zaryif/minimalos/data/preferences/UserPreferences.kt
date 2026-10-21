@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.zaryif.minimalos.domain.model.RestrictionMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.json.JSONObject
@@ -42,6 +43,7 @@ class UserPreferences(private val context: Context) {
         private val POMODORO_WORK_MINUTES = intPreferencesKey("pomodoro_work_minutes")
         private val POMODORO_BREAK_MINUTES = intPreferencesKey("pomodoro_break_minutes")
         private val ASSISTANT_PACKAGE = stringPreferencesKey("assistant_package")
+        private val RESTRICTION_MODE = stringPreferencesKey("restriction_mode")
 
         val DEFAULT_HOME_WIDGETS = listOf("TODOS", "CALENDAR", "SHORTCUTS")
         val DEFAULT_DECK_WIDGETS = listOf("NOTES", "TODOS", "CALENDAR", "POMODORO", "TIMERS", "SYSTEM_WIDGETS")
@@ -266,6 +268,22 @@ class UserPreferences(private val context: Context) {
             } else {
                 prefs.remove(ASSISTANT_PACKAGE)
             }
+        }
+    }
+
+    val restrictionMode: Flow<RestrictionMode> = context.dataStore.data
+        .map { prefs ->
+            val name = prefs[RESTRICTION_MODE] ?: RestrictionMode.UNRESTRICTED.name
+            try {
+                RestrictionMode.valueOf(name)
+            } catch (_: Exception) {
+                RestrictionMode.UNRESTRICTED
+            }
+        }
+
+    suspend fun setRestrictionMode(mode: RestrictionMode) {
+        context.dataStore.edit { prefs ->
+            prefs[RESTRICTION_MODE] = mode.name
         }
     }
 }

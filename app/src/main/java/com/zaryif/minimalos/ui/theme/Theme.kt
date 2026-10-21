@@ -1,6 +1,8 @@
 package com.zaryif.minimalos.ui.theme
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
@@ -9,9 +11,18 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
+private fun Context.findActivity(): Activity? {
+    var ctx = this
+    while (ctx is ContextWrapper) {
+        if (ctx is Activity) return ctx
+        ctx = ctx.baseContext
+    }
+    return null
+}
+
 @Composable
 fun MinimalOSTheme(
-    themeId: String = "AMOLED_RED",
+    themeId: String = "RABBIT_ORANGE",
     content: @Composable () -> Unit
 ) {
     // Update active theme state
@@ -20,12 +31,14 @@ fun MinimalOSTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = currentActiveTheme.background.toArgb()
-            window.navigationBarColor = currentActiveTheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = false
-                isAppearanceLightNavigationBars = false
+            val activity = view.context.findActivity()
+            activity?.window?.let { window ->
+                window.statusBarColor = currentActiveTheme.background.toArgb()
+                window.navigationBarColor = currentActiveTheme.background.toArgb()
+                WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = false
+                    isAppearanceLightNavigationBars = false
+                }
             }
         }
     }

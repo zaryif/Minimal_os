@@ -2,9 +2,13 @@ package com.zaryif.minimalos
 
 import android.app.Activity
 import android.appwidget.AppWidgetHost
+import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProviderInfo
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -18,6 +22,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
@@ -31,13 +36,37 @@ import com.zaryif.minimalos.ui.components.MinimalClockSheet
 import com.zaryif.minimalos.ui.components.MinimalMemoSheet
 import com.zaryif.minimalos.ui.home.HomeScreen
 import com.zaryif.minimalos.ui.hub.HubScreen
+import com.zaryif.minimalos.ui.onboarding.OnboardingScreen
 import com.zaryif.minimalos.ui.settings.SettingsScreen
 import com.zaryif.minimalos.ui.theme.MinimalBlack
 import com.zaryif.minimalos.ui.theme.MinimalOSTheme
 import com.zaryif.minimalos.ui.widgets.WidgetsDeckScreen
 import kotlinx.coroutines.launch
 
+class CustomAppWidgetHost(context: Context, hostId: Int) : AppWidgetHost(context, hostId) {
+    override fun onCreateView(
+        context: Context,
+        appWidgetId: Int,
+        appWidget: AppWidgetProviderInfo?
+    ): AppWidgetHostView {
+        return object : AppWidgetHostView(context) {
+            override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+                when (ev?.actionMasked) {
+                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                        parent?.requestDisallowInterceptTouchEvent(true)
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        parent?.requestDisallowInterceptTouchEvent(false)
+                    }
+                }
+                return super.dispatchTouchEvent(ev)
+            }
+        }
+    }
+}
+
 enum class ScreenState {
+    ONBOARDING,
     HOME,
     APPS,
     HUB,
@@ -138,7 +167,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         appWidgetManager = AppWidgetManager.getInstance(this)
-        appWidgetHost = AppWidgetHost(this, APPWIDGET_HOST_ID)
+        appWidgetHost = CustomAppWidgetHost(this, APPWIDGET_HOST_ID)
 
         userPreferences = UserPreferences(this)
         appRepository = AppRepository(this)
@@ -153,7 +182,7 @@ class MainActivity : ComponentActivity() {
         )
 
         setContent {
-            val themeId by userPreferences.themeId.collectAsState(initial = "AMOLED_RED")
+            val themeId by userPreferences.themeId.collectAsState(initial = "RABBIT_ORANGE")
             MinimalOSTheme(themeId = themeId) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -202,22 +231,38 @@ fun MinimalAppContent(
     onAddHomeWidget: () -> Unit,
     onDeleteHomeWidget: (Int) -> Unit
 ) {
+    val scope = rememberCoroutineScope()
     val installedApps = remember { appRepository.getInstalledApps() }
     val deckWidgetIds by userPreferences.deckSystemWidgets.collectAsState(initial = emptySet())
+    val onboardingCompleted by userPreferences.onboardingCompleted.collectAsState(initial = true)
 
-    var currentScreen by remember { mutableStateOf(ScreenState.HOME) }
+    var currentScreen by remember(onboardingCompleted) {
+        mutableStateOf(if (onboardingCompleted) ScreenState.HOME else ScreenState.ONBOARDING)
+    }
 
     // Mini Apps bottom sheet states
     var showMemoSheet by remember { mutableStateOf(false) }
     var showClockSheet by remember { mutableStateOf(false) }
 
     // Android back button handling returns to Home screen
-    BackHandler(enabled = currentScreen != ScreenState.HOME) {
+    BackHandler(enabled = currentScreen != ScreenState.HOME && currentScreen != ScreenState.ONBOARDING) {
         currentScreen = ScreenState.HOME
     }
 
     Crossfade(targetState = currentScreen, label = "ScreenTransition") { screen ->
         when (screen) {
+            ScreenState.ONBOARDING -> {
+                OnboardingScreen(
+                    onFinish = { selectedMode ->
+                        scope.launch {
+                            userPreferences.setRestrictionMode(selectedMode)
+                            userPreferences.setOnboardingCompleted(true)
+                            currentScreen = ScreenState.HOME
+                        }
+                    }
+                )
+            }
+
             ScreenState.HOME -> {
                 HomeScreen(
                     installedApps = installedApps,
