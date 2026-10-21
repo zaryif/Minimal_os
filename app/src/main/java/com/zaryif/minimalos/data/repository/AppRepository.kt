@@ -14,26 +14,18 @@ class AppRepository(private val context: Context) {
             addCategory(Intent.CATEGORY_LAUNCHER)
         }
 
-        val resolveInfos = try {
-            pm.queryIntentActivities(mainIntent, 0)
-        } catch (_: Exception) {
-            emptyList()
-        }
+        val resolveInfos = pm.queryIntentActivities(mainIntent, 0)
 
         return resolveInfos
-            .filter { it.activityInfo?.packageName != null && it.activityInfo.packageName != context.packageName }
-            .mapNotNull { resolveInfo ->
-                try {
-                    val appInfo = resolveInfo.activityInfo?.applicationInfo
-                    AppInfo(
-                        packageName = resolveInfo.activityInfo.packageName,
-                        label = resolveInfo.loadLabel(pm)?.toString() ?: resolveInfo.activityInfo.packageName,
-                        icon = resolveInfo.loadIcon(pm),
-                        isSystemApp = (appInfo?.flags?.and(ApplicationInfo.FLAG_SYSTEM) ?: 0) != 0
-                    )
-                } catch (_: Exception) {
-                    null
-                }
+            .filter { it.activityInfo.packageName != context.packageName }
+            .map { resolveInfo ->
+                val appInfo = resolveInfo.activityInfo.applicationInfo
+                AppInfo(
+                    packageName = resolveInfo.activityInfo.packageName,
+                    label = resolveInfo.loadLabel(pm).toString(),
+                    icon = resolveInfo.loadIcon(pm),
+                    isSystemApp = (appInfo?.flags?.and(ApplicationInfo.FLAG_SYSTEM) ?: 0) != 0
+                )
             }
             .distinctBy { it.packageName }
             .sortedBy { it.label.lowercase() }

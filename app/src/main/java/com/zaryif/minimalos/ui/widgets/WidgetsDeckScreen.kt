@@ -174,7 +174,7 @@ fun WidgetsDeckScreen(
                     when (cardType) {
                         "NOTES" -> {
                             item(key = "NOTES") {
-                                DeckNotesCard(
+                                RabbitNotesCard(
                                     notes = notes.take(4),
                                     newNoteText = newNoteText,
                                     onNewNoteChange = { newNoteText = it },
@@ -191,7 +191,7 @@ fun WidgetsDeckScreen(
 
                         "TODOS" -> {
                             item(key = "TODOS") {
-                                DeckTodoCard(
+                                RabbitTodoCard(
                                     todos = todos.take(4),
                                     newTodoText = newTodoText,
                                     onNewTodoChange = { newTodoText = it },
@@ -209,7 +209,7 @@ fun WidgetsDeckScreen(
 
                         "CALENDAR" -> {
                             item(key = "CALENDAR") {
-                                DeckCalendarCard(
+                                RabbitCalendarCard(
                                     newEventText = newEventText,
                                     onNewEventChange = { newEventText = it },
                                     onAddEvent = {
@@ -233,7 +233,7 @@ fun WidgetsDeckScreen(
 
                         "POMODORO" -> {
                             item(key = "POMODORO") {
-                                DeckPomodoroCard(
+                                RabbitPomodoroCard(
                                     seconds = pomodoroSeconds,
                                     isRunning = isPomodoroRunning,
                                     isBreak = isBreakMode,
@@ -252,7 +252,7 @@ fun WidgetsDeckScreen(
 
                         "TIMERS" -> {
                             item(key = "TIMERS") {
-                                DeckQuickTimersCard(
+                                RabbitQuickTimersCard(
                                     onSetTimer = { seconds, _ ->
                                         executeCommandUseCase.execute("+${seconds}s")
                                     }
@@ -262,7 +262,7 @@ fun WidgetsDeckScreen(
 
                         "SYSTEM_WIDGETS" -> {
                             item(key = "SYSTEM_WIDGETS_HEADER") {
-                                DeckSystemWidgetsHeader(onAddWidget = onAddSystemWidget)
+                                RabbitSystemWidgetsHeader(onAddWidget = onAddSystemWidget)
                             }
 
                             if (systemWidgetIds.isEmpty()) {
@@ -286,7 +286,7 @@ fun WidgetsDeckScreen(
                                 }
                             } else {
                                 items(systemWidgetIds.toList(), key = { "widget_$it" }) { widgetId ->
-                                    DeckSystemWidgetHostItem(
+                                    RabbitSystemWidgetHostItem(
                                         widgetId = widgetId,
                                         appWidgetManager = appWidgetManager,
                                         appWidgetHost = appWidgetHost,
@@ -328,10 +328,10 @@ fun WidgetsDeckScreen(
 }
 
 // -------------------------------------------------------------
-// DECK NOTES CARD
+// RABBIT NOTES CARD
 // -------------------------------------------------------------
 @Composable
-private fun DeckNotesCard(
+private fun RabbitNotesCard(
     notes: List<Note>,
     newNoteText: String,
     onNewNoteChange: (String) -> Unit,
@@ -467,10 +467,10 @@ private fun DeckNotesCard(
 }
 
 // -------------------------------------------------------------
-// DECK TO-DO CARD
+// RABBIT TO-DO CARD
 // -------------------------------------------------------------
 @Composable
-private fun DeckTodoCard(
+private fun RabbitTodoCard(
     todos: List<Todo>,
     newTodoText: String,
     onNewTodoChange: (String) -> Unit,
@@ -623,10 +623,10 @@ private fun DeckTodoCard(
 }
 
 // -------------------------------------------------------------
-// DECK CALENDAR EVENT CARD (Auto silent create)
+// RABBIT CALENDAR EVENT CARD (Auto silent create)
 // -------------------------------------------------------------
 @Composable
-private fun DeckCalendarCard(
+private fun RabbitCalendarCard(
     newEventText: String,
     onNewEventChange: (String) -> Unit,
     onAddEvent: () -> Unit,
@@ -730,10 +730,10 @@ private fun DeckCalendarCard(
 }
 
 // -------------------------------------------------------------
-// DECK POMODORO CARD
+// RABBIT POMODORO CARD
 // -------------------------------------------------------------
 @Composable
-private fun DeckPomodoroCard(
+private fun RabbitPomodoroCard(
     seconds: Int,
     isRunning: Boolean,
     isBreak: Boolean,
@@ -901,10 +901,10 @@ private fun DeckPomodoroCard(
 }
 
 // -------------------------------------------------------------
-// DECK QUICK TIMERS CARD (One-Tap Silent Timers)
+// RABBIT QUICK TIMERS CARD (One-Tap Silent Timers)
 // -------------------------------------------------------------
 @Composable
-private fun DeckQuickTimersCard(
+private fun RabbitQuickTimersCard(
     onSetTimer: (Int, String) -> Unit
 ) {
     val presets = listOf(
@@ -971,10 +971,10 @@ private fun DeckQuickTimersCard(
 }
 
 // -------------------------------------------------------------
-// DECK SYSTEM WIDGETS HEADER
+// SYSTEM WIDGETS HEADER
 // -------------------------------------------------------------
 @Composable
-private fun DeckSystemWidgetsHeader(onAddWidget: () -> Unit) {
+private fun RabbitSystemWidgetsHeader(onAddWidget: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1015,10 +1015,10 @@ private fun DeckSystemWidgetsHeader(onAddWidget: () -> Unit) {
 }
 
 // -------------------------------------------------------------
-// DECK SYSTEM WIDGET HOST ITEM
+// SYSTEM WIDGET HOST ITEM
 // -------------------------------------------------------------
 @Composable
-private fun DeckSystemWidgetHostItem(
+private fun RabbitSystemWidgetHostItem(
     widgetId: Int,
     appWidgetManager: AppWidgetManager,
     appWidgetHost: AppWidgetHost,
@@ -1060,13 +1060,13 @@ private fun DeckSystemWidgetHostItem(
             AndroidView(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 100.dp, max = 300.dp),
+                    .heightIn(min = 100.dp, max = 240.dp),
                 factory = { ctx ->
                     val info = appWidgetManager.getAppWidgetInfo(widgetId)
                     if (info != null) {
                         try {
                             appWidgetHost.createView(ctx, widgetId, info).apply {
-                                (parent as? android.view.ViewGroup)?.removeView(this)
+                                setAppWidget(widgetId, info)
                             }
                         } catch (_: Exception) {
                             android.view.View(ctx)

@@ -72,8 +72,6 @@ import com.zaryif.minimalos.ui.components.CommandHelpDialog
 import com.zaryif.minimalos.ui.components.MinimalDynamicHomeWidgets
 import com.zaryif.minimalos.ui.components.MinimalLiveTimerCard
 import com.zaryif.minimalos.ui.components.MinimalNotificationBanner
-import com.zaryif.minimalos.ui.components.LumenStackBox
-import com.zaryif.minimalos.ui.theme.AppleSanFranciscoFontFamily
 import com.zaryif.minimalos.ui.theme.MinimalBlack
 import com.zaryif.minimalos.ui.theme.MinimalCardBg
 import com.zaryif.minimalos.ui.theme.MinimalDarkCardBg
@@ -81,11 +79,6 @@ import com.zaryif.minimalos.ui.theme.MinimalDarkGray
 import com.zaryif.minimalos.ui.theme.MinimalGray
 import com.zaryif.minimalos.ui.theme.MinimalRed
 import com.zaryif.minimalos.ui.theme.MinimalWhite
-import com.zaryif.minimalos.ui.theme.SlabInk
-import com.zaryif.minimalos.ui.theme.SlabLime
-import com.zaryif.minimalos.ui.theme.SlabOrange
-import com.zaryif.minimalos.ui.theme.SlabPaper
-import com.zaryif.minimalos.ui.theme.currentActiveTheme
 import kotlinx.coroutines.delay
 import java.io.File
 import java.io.InputStream
@@ -335,12 +328,11 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (currentActiveTheme.id == "MINIMAL_STACK") "minimal stack" else "minimal",
+                    text = "minimal",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (currentActiveTheme.id == "MINIMAL_STACK") SlabLime else MinimalWhite,
-                    letterSpacing = 1.sp,
-                    fontFamily = AppleSanFranciscoFontFamily
+                    color = MinimalWhite,
+                    letterSpacing = 1.sp
                 )
 
                 // Mini Apps Shortcuts (Assistant, Clock, Memo, Settings)
@@ -391,115 +383,62 @@ fun HomeScreen(
                 contentAlignment = Alignment.Center
             ) {
                 if (!isTyping) {
-                    if (currentActiveTheme.id == "MINIMAL_STACK") {
-                        // Lumen OS 2 Slab Accordion Stack Box Layout
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .verticalScroll(rememberScrollState()),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            // Top Date Title (Lumen OS 2 date_str style)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 4.dp, bottom = 12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Bottom
-                            ) {
-                                Text(
-                                    text = currentDate,
-                                    fontSize = 28.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    letterSpacing = (-1).sp,
-                                    color = SlabPaper,
-                                    fontFamily = AppleSanFranciscoFontFamily,
-                                    lineHeight = 32.sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    text = currentTime,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = SlabLime,
-                                    fontFamily = AppleSanFranciscoFontFamily
-                                )
-                            }
+                    // Full home screen widgets & large clock
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = currentTime,
+                            fontSize = 72.sp,
+                            fontWeight = FontWeight.Light,
+                            letterSpacing = (-2).sp,
+                            color = MinimalWhite
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = currentDate,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = MinimalGray
+                        )
 
-                            // The Lumen OS 2 Slabs Stack Box
-                            LumenStackBox(
-                                todos = todos,
-                                notes = notes,
-                                onToggleTodo = { id -> storageRepository.toggleTodo(id) },
-                                onOpenMemo = onOpenMemo,
-                                onOpenClock = onOpenClock,
-                                onNavigateToApps = onNavigateToApps,
-                                onNavigateToWidgets = onNavigateToWidgets,
-                                onNavigateToHub = onNavigateToHub,
-                                onNavigateToSettings = onNavigateToSettings,
-                                onExecuteCommand = { cmd -> executeCommandUseCase.execute(cmd) }
-                            )
+                        Spacer(modifier = Modifier.height(14.dp))
 
-                            Spacer(modifier = Modifier.height(14.dp))
-                        }
-                    } else {
-                        // Full home screen widgets & large clock
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .verticalScroll(rememberScrollState()),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = currentTime,
-                                fontSize = 72.sp,
-                                fontWeight = FontWeight.Light,
-                                letterSpacing = (-2).sp,
-                                color = MinimalWhite
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = currentDate,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Normal,
-                                color = MinimalGray
-                            )
+                        // Live countdown card for active Pomodoro or Timer sessions
+                        MinimalLiveTimerCard(modifier = Modifier.padding(bottom = 12.dp))
 
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            // Live countdown card for active Pomodoro or Timer sessions
-                            MinimalLiveTimerCard(modifier = Modifier.padding(bottom = 12.dp))
-
-                            // Dynamic Customizable Home Screen Widgets
-                            MinimalDynamicHomeWidgets(
-                                widgetsOrder = homeWidgetsOrder,
-                                todos = todos,
-                                notes = notes,
-                                favoriteApps = favoriteApps,
-                                homeSystemWidgetIds = homeSystemWidgets,
-                                appWidgetManager = appWidgetManager,
-                                appWidgetHost = appWidgetHost,
-                                showAllTodosPreference = showAllTodosPref,
-                                showAllNotesPreference = showAllNotesPref,
-                                onToggleTodo = { id -> storageRepository.toggleTodo(id) },
-                                onOpenMemo = onOpenMemo,
-                                onOpenCalendar = {
-                                    val calIntent = Intent(Intent.ACTION_VIEW).apply {
-                                        data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").build()
-                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                    }
-                                    try {
-                                        context.startActivity(calIntent)
-                                    } catch (_: Exception) {}
-                                },
-                                onLaunchApp = { app ->
-                                    val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                    intent?.let { context.startActivity(it) }
-                                },
-                                onAddHomeWidget = onAddHomeWidget,
-                                onDeleteHomeWidget = onDeleteHomeWidget
-                            )
-                        }
+                        // Dynamic Customizable Home Screen Widgets
+                        MinimalDynamicHomeWidgets(
+                            widgetsOrder = homeWidgetsOrder,
+                            todos = todos,
+                            notes = notes,
+                            favoriteApps = favoriteApps,
+                            homeSystemWidgetIds = homeSystemWidgets,
+                            appWidgetManager = appWidgetManager,
+                            appWidgetHost = appWidgetHost,
+                            showAllTodosPreference = showAllTodosPref,
+                            showAllNotesPreference = showAllNotesPref,
+                            onToggleTodo = { id -> storageRepository.toggleTodo(id) },
+                            onOpenMemo = onOpenMemo,
+                            onOpenCalendar = {
+                                val calIntent = Intent(Intent.ACTION_VIEW).apply {
+                                    data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").build()
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                try {
+                                    context.startActivity(calIntent)
+                                } catch (_: Exception) {}
+                            },
+                            onLaunchApp = { app ->
+                                val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                intent?.let { context.startActivity(it) }
+                            },
+                            onAddHomeWidget = onAddHomeWidget,
+                            onDeleteHomeWidget = onDeleteHomeWidget
+                        )
                     }
                 } else {
                     // Compact header when typing to leave maximum space for suggestions and input
@@ -547,7 +486,7 @@ fun HomeScreen(
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = "deck ➔",
+                            text = "widgets ➔",
                             fontSize = 11.sp,
                             color = MinimalDarkGray,
                             fontWeight = FontWeight.Medium

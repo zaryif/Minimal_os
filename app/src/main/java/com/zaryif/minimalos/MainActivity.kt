@@ -18,7 +18,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
@@ -32,7 +31,6 @@ import com.zaryif.minimalos.ui.components.MinimalClockSheet
 import com.zaryif.minimalos.ui.components.MinimalMemoSheet
 import com.zaryif.minimalos.ui.home.HomeScreen
 import com.zaryif.minimalos.ui.hub.HubScreen
-import com.zaryif.minimalos.ui.onboarding.OnboardingScreen
 import com.zaryif.minimalos.ui.settings.SettingsScreen
 import com.zaryif.minimalos.ui.theme.MinimalBlack
 import com.zaryif.minimalos.ui.theme.MinimalOSTheme
@@ -40,7 +38,6 @@ import com.zaryif.minimalos.ui.widgets.WidgetsDeckScreen
 import kotlinx.coroutines.launch
 
 enum class ScreenState {
-    ONBOARDING,
     HOME,
     APPS,
     HUB,
@@ -156,7 +153,7 @@ class MainActivity : ComponentActivity() {
         )
 
         setContent {
-            val themeId by userPreferences.themeId.collectAsState(initial = "RABBIT_ORANGE")
+            val themeId by userPreferences.themeId.collectAsState(initial = "AMOLED_RED")
             MinimalOSTheme(themeId = themeId) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -182,16 +179,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        try {
-            appWidgetHost.startListening()
-        } catch (_: Exception) {}
+        appWidgetHost.startListening()
     }
 
     override fun onStop() {
         super.onStop()
-        try {
-            appWidgetHost.stopListening()
-        } catch (_: Exception) {}
+        appWidgetHost.stopListening()
     }
 }
 
@@ -209,7 +202,6 @@ fun MinimalAppContent(
     onAddHomeWidget: () -> Unit,
     onDeleteHomeWidget: (Int) -> Unit
 ) {
-    val scope = rememberCoroutineScope()
     val installedApps = remember { appRepository.getInstalledApps() }
     val deckWidgetIds by userPreferences.deckSystemWidgets.collectAsState(initial = emptySet())
 
@@ -219,28 +211,13 @@ fun MinimalAppContent(
     var showMemoSheet by remember { mutableStateOf(false) }
     var showClockSheet by remember { mutableStateOf(false) }
 
-    // Android back button handling returns to Home screen (or finishes onboarding)
+    // Android back button handling returns to Home screen
     BackHandler(enabled = currentScreen != ScreenState.HOME) {
-        if (currentScreen == ScreenState.ONBOARDING) {
-            scope.launch { userPreferences.setOnboardingCompleted(true) }
-        }
         currentScreen = ScreenState.HOME
     }
 
     Crossfade(targetState = currentScreen, label = "ScreenTransition") { screen ->
         when (screen) {
-            ScreenState.ONBOARDING -> {
-                OnboardingScreen(
-                    onFinish = { selectedMode ->
-                        scope.launch {
-                            userPreferences.setRestrictionMode(selectedMode)
-                            userPreferences.setOnboardingCompleted(true)
-                            currentScreen = ScreenState.HOME
-                        }
-                    }
-                )
-            }
-
             ScreenState.HOME -> {
                 HomeScreen(
                     installedApps = installedApps,
@@ -292,7 +269,6 @@ fun MinimalAppContent(
                 SettingsScreen(
                     installedApps = installedApps,
                     userPreferences = userPreferences,
-                    onNavigateToOnboarding = { currentScreen = ScreenState.ONBOARDING },
                     onBack = { currentScreen = ScreenState.HOME }
                 )
             }

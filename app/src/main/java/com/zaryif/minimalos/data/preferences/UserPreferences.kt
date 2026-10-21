@@ -9,7 +9,6 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.zaryif.minimalos.domain.model.RestrictionMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.json.JSONObject
@@ -43,17 +42,13 @@ class UserPreferences(private val context: Context) {
         private val POMODORO_WORK_MINUTES = intPreferencesKey("pomodoro_work_minutes")
         private val POMODORO_BREAK_MINUTES = intPreferencesKey("pomodoro_break_minutes")
         private val ASSISTANT_PACKAGE = stringPreferencesKey("assistant_package")
-        private val RESTRICTION_MODE = stringPreferencesKey("restriction_mode")
 
         val DEFAULT_HOME_WIDGETS = listOf("TODOS", "CALENDAR", "SHORTCUTS")
         val DEFAULT_DECK_WIDGETS = listOf("NOTES", "TODOS", "CALENDAR", "POMODORO", "TIMERS", "SYSTEM_WIDGETS")
     }
 
     val onboardingCompleted: Flow<Boolean> = context.dataStore.data
-        .map { prefs ->
-            prefs[ONBOARDING_COMPLETED]
-                ?: (prefs[FAVORITE_APPS]?.isNotEmpty() == true || prefs[CUSTOM_WALLPAPER_URI] != null)
-        }
+        .map { prefs -> prefs[ONBOARDING_COMPLETED] ?: false }
 
     val aiProvider: Flow<AiProvider> = context.dataStore.data
         .map { prefs ->
@@ -208,7 +203,7 @@ class UserPreferences(private val context: Context) {
     }
 
     val themeId: Flow<String> = context.dataStore.data
-        .map { prefs -> prefs[THEME_ID] ?: "RABBIT_ORANGE" }
+        .map { prefs -> prefs[THEME_ID] ?: "AMOLED_RED" }
 
     val homeShowAllTodos: Flow<Boolean> = context.dataStore.data
         .map { prefs -> prefs[HOME_SHOW_ALL_TODOS] ?: false }
@@ -271,22 +266,6 @@ class UserPreferences(private val context: Context) {
             } else {
                 prefs.remove(ASSISTANT_PACKAGE)
             }
-        }
-    }
-
-    val restrictionMode: Flow<RestrictionMode> = context.dataStore.data
-        .map { prefs ->
-            val name = prefs[RESTRICTION_MODE] ?: RestrictionMode.UNRESTRICTED.name
-            try {
-                RestrictionMode.valueOf(name)
-            } catch (_: Exception) {
-                RestrictionMode.UNRESTRICTED
-            }
-        }
-
-    suspend fun setRestrictionMode(mode: RestrictionMode) {
-        context.dataStore.edit { prefs ->
-            prefs[RESTRICTION_MODE] = mode.name
         }
     }
 }

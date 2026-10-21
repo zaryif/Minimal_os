@@ -77,13 +77,13 @@ fun MinimalSystemWidgetHostItem(
             AndroidView(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 100.dp, max = 300.dp),
+                    .heightIn(min = 100.dp, max = 240.dp),
                 factory = { ctx ->
                     val info = appWidgetManager.getAppWidgetInfo(widgetId)
                     if (info != null) {
                         try {
                             appWidgetHost.createView(ctx, widgetId, info).apply {
-                                (parent as? android.view.ViewGroup)?.removeView(this)
+                                setAppWidget(widgetId, info)
                             }
                         } catch (_: Exception) {
                             android.view.View(ctx)

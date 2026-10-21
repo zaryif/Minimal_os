@@ -12,8 +12,8 @@ android {
         applicationId = "com.zaryif.minimalos"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "1.5.3"
+        versionCode = 4
+        versionName = "1.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

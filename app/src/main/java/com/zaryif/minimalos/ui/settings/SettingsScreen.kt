@@ -30,9 +30,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -41,7 +38,6 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,8 +47,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -62,18 +56,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.zIndex
-import kotlin.math.roundToInt
 import com.zaryif.minimalos.data.preferences.AiProvider
 import com.zaryif.minimalos.data.preferences.UserPreferences
 import com.zaryif.minimalos.domain.model.AppInfo
@@ -90,12 +79,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     installedApps: List<AppInfo>,
     userPreferences: UserPreferences,
-    onNavigateToOnboarding: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -105,7 +92,7 @@ fun SettingsScreen(
     val showCommandFeedback by userPreferences.showCommandFeedback.collectAsState(initial = true)
     val customWallpaperUri by userPreferences.customWallpaperUri.collectAsState(initial = null)
     val favoriteAppPackages by userPreferences.favoriteApps.collectAsState(initial = emptySet())
-    val currentThemeId by userPreferences.themeId.collectAsState(initial = "RABBIT_ORANGE")
+    val currentThemeId by userPreferences.themeId.collectAsState(initial = "AMOLED_RED")
     val homeWidgets by userPreferences.homeWidgets.collectAsState(initial = UserPreferences.DEFAULT_HOME_WIDGETS)
     val deckWidgetsOrder by userPreferences.deckWidgetsOrder.collectAsState(initial = UserPreferences.DEFAULT_DECK_WIDGETS)
     val customCommands by userPreferences.customCommands.collectAsState(initial = emptyMap())
@@ -416,42 +403,62 @@ fun SettingsScreen(
             ) {
                 homeWidgets.forEachIndexed { index, widgetKey ->
                     val label = allHomeWidgetOptions.find { it.first == widgetKey }?.second ?: widgetKey
-                    key(widgetKey) {
-                        ReorderableRowItem(
-                            title = label,
-                            index = index,
-                            totalCount = homeWidgets.size,
-                            onMoveUp = {
-                                if (index > 0) {
-                                    val mutable = homeWidgets.toMutableList()
-                                    val temp = mutable[index]
-                                    mutable[index] = mutable[index - 1]
-                                    mutable[index - 1] = temp
-                                    scope.launch { userPreferences.setHomeWidgets(mutable) }
-                                }
-                            },
-                            onMoveDown = {
-                                if (index < homeWidgets.size - 1) {
-                                    val mutable = homeWidgets.toMutableList()
-                                    val temp = mutable[index]
-                                    mutable[index] = mutable[index + 1]
-                                    mutable[index + 1] = temp
-                                    scope.launch { userPreferences.setHomeWidgets(mutable) }
-                                }
-                            },
-                            onRemove = {
-                                val updated = homeWidgets - widgetKey
-                                scope.launch { userPreferences.setHomeWidgets(updated) }
-                            },
-                            onSwap = { from, to ->
-                                if (from in homeWidgets.indices && to in homeWidgets.indices) {
-                                    val mutable = homeWidgets.toMutableList()
-                                    val item = mutable.removeAt(from)
-                                    mutable.add(to, item)
-                                    scope.launch { userPreferences.setHomeWidgets(mutable) }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MinimalDarkCardBg)
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = label,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MinimalWhite,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (index > 0) {
+                                IconButton(
+                                    onClick = {
+                                        val mutable = homeWidgets.toMutableList()
+                                        val temp = mutable[index]
+                                        mutable[index] = mutable[index - 1]
+                                        mutable[index - 1] = temp
+                                        scope.launch { userPreferences.setHomeWidgets(mutable) }
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.ArrowUpward, contentDescription = "Move Up", tint = MinimalRed, modifier = Modifier.size(16.dp))
                                 }
                             }
-                        )
+                            if (index < homeWidgets.size - 1) {
+                                IconButton(
+                                    onClick = {
+                                        val mutable = homeWidgets.toMutableList()
+                                        val temp = mutable[index]
+                                        mutable[index] = mutable[index + 1]
+                                        mutable[index + 1] = temp
+                                        scope.launch { userPreferences.setHomeWidgets(mutable) }
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.ArrowDownward, contentDescription = "Move Down", tint = MinimalRed, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                            IconButton(
+                                onClick = {
+                                    val updated = homeWidgets - widgetKey
+                                    scope.launch { userPreferences.setHomeWidgets(updated) }
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(imageVector = Icons.Default.Close, contentDescription = "Remove", tint = MinimalGray, modifier = Modifier.size(16.dp))
+                            }
+                        }
                     }
                 }
 
@@ -518,42 +525,62 @@ fun SettingsScreen(
             ) {
                 deckWidgetsOrder.forEachIndexed { index, deckKey ->
                     val label = allDeckWidgetOptions.find { it.first == deckKey }?.second ?: deckKey
-                    key(deckKey) {
-                        ReorderableRowItem(
-                            title = label,
-                            index = index,
-                            totalCount = deckWidgetsOrder.size,
-                            onMoveUp = {
-                                if (index > 0) {
-                                    val mutable = deckWidgetsOrder.toMutableList()
-                                    val temp = mutable[index]
-                                    mutable[index] = mutable[index - 1]
-                                    mutable[index - 1] = temp
-                                    scope.launch { userPreferences.setDeckWidgetsOrder(mutable) }
-                                }
-                            },
-                            onMoveDown = {
-                                if (index < deckWidgetsOrder.size - 1) {
-                                    val mutable = deckWidgetsOrder.toMutableList()
-                                    val temp = mutable[index]
-                                    mutable[index] = mutable[index + 1]
-                                    mutable[index + 1] = temp
-                                    scope.launch { userPreferences.setDeckWidgetsOrder(mutable) }
-                                }
-                            },
-                            onRemove = {
-                                val updated = deckWidgetsOrder - deckKey
-                                scope.launch { userPreferences.setDeckWidgetsOrder(updated) }
-                            },
-                            onSwap = { from, to ->
-                                if (from in deckWidgetsOrder.indices && to in deckWidgetsOrder.indices) {
-                                    val mutable = deckWidgetsOrder.toMutableList()
-                                    val item = mutable.removeAt(from)
-                                    mutable.add(to, item)
-                                    scope.launch { userPreferences.setDeckWidgetsOrder(mutable) }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MinimalDarkCardBg)
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = label,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MinimalWhite,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (index > 0) {
+                                IconButton(
+                                    onClick = {
+                                        val mutable = deckWidgetsOrder.toMutableList()
+                                        val temp = mutable[index]
+                                        mutable[index] = mutable[index - 1]
+                                        mutable[index - 1] = temp
+                                        scope.launch { userPreferences.setDeckWidgetsOrder(mutable) }
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.ArrowUpward, contentDescription = "Move Up", tint = MinimalRed, modifier = Modifier.size(16.dp))
                                 }
                             }
-                        )
+                            if (index < deckWidgetsOrder.size - 1) {
+                                IconButton(
+                                    onClick = {
+                                        val mutable = deckWidgetsOrder.toMutableList()
+                                        val temp = mutable[index]
+                                        mutable[index] = mutable[index + 1]
+                                        mutable[index + 1] = temp
+                                        scope.launch { userPreferences.setDeckWidgetsOrder(mutable) }
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.ArrowDownward, contentDescription = "Move Down", tint = MinimalRed, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                            IconButton(
+                                onClick = {
+                                    val updated = deckWidgetsOrder - deckKey
+                                    scope.launch { userPreferences.setDeckWidgetsOrder(updated) }
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(imageVector = Icons.Default.Close, contentDescription = "Remove", tint = MinimalGray, modifier = Modifier.size(16.dp))
+                            }
+                        }
                     }
                 }
 
@@ -611,12 +638,11 @@ fun SettingsScreen(
                     color = MinimalGray
                 )
             } else {
-                FlowRow(
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    favoriteAppsList.forEach { app ->
+                    favoriteAppsList.take(5).forEach { app ->
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
@@ -626,7 +652,6 @@ fun SettingsScreen(
                         ) {
                             Text(
                                 text = app.label,
-                                fontFamily = AppleSanFranciscoFontFamily,
                                 fontSize = 12.sp,
                                 color = MinimalWhite
                             )
@@ -1017,19 +1042,6 @@ fun SettingsScreen(
                 }
             )
 
-            HorizontalDivider(color = MinimalDarkGray, thickness = 0.5.dp)
-
-            SettingsActionRow(
-                title = "replay onboarding walkthrough",
-                subtitle = "launch initial gestures and command tutorial",
-                onClick = {
-                    scope.launch {
-                        userPreferences.setOnboardingCompleted(false)
-                    }
-                    onNavigateToOnboarding()
-                }
-            )
-
             Spacer(modifier = Modifier.height(32.dp))
 
             // ABOUT
@@ -1042,7 +1054,7 @@ fun SettingsScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Minimal OS Launcher v1.5.0\nCreated by MD. Zarif Azfar\nApple San Francisco typography · Deck · Minimal Stack engine.",
+                text = "Minimal OS Launcher v1.4.0\nCreated by MD. Zarif Azfar\nApple San Francisco typography · Rabbit Deck · Multi-Theme engine.",
                 fontSize = 13.sp,
                 color = MinimalGray,
                 lineHeight = 18.sp
@@ -1273,119 +1285,6 @@ fun SettingsScreen(
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ReorderableRowItem(
-    title: String,
-    index: Int,
-    totalCount: Int,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
-    onRemove: () -> Unit,
-    onSwap: (fromIndex: Int, toIndex: Int) -> Unit
-) {
-    var offsetY by remember { mutableFloatStateOf(0f) }
-    var isDragging by remember { mutableStateOf(false) }
-    val density = LocalDensity.current
-    val itemHeightPx = with(density) { 46.dp.toPx() }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .zIndex(if (isDragging) 10f else 1f)
-            .offset { IntOffset(0, offsetY.roundToInt()) }
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (isDragging) MinimalCardBg else MinimalDarkCardBg)
-            .border(
-                width = if (isDragging) 1.5.dp else 1.dp,
-                color = if (isDragging) MinimalRed else MinimalDarkGray.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(8.dp)
-            )
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .pointerInput(index, totalCount) {
-                        detectVerticalDragGestures(
-                            onDragStart = {
-                                isDragging = true
-                                offsetY = 0f
-                            },
-                            onDragEnd = {
-                                isDragging = false
-                                offsetY = 0f
-                            },
-                            onDragCancel = {
-                                isDragging = false
-                                offsetY = 0f
-                            },
-                            onVerticalDrag = { change, dragAmount ->
-                                change.consume()
-                                offsetY += dragAmount
-                                if (offsetY > itemHeightPx && index < totalCount - 1) {
-                                    onSwap(index, index + 1)
-                                    offsetY -= itemHeightPx
-                                } else if (offsetY < -itemHeightPx && index > 0) {
-                                    onSwap(index, index - 1)
-                                    offsetY += itemHeightPx
-                                }
-                            }
-                        )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.DragHandle,
-                    contentDescription = "Drag to reorder",
-                    tint = if (isDragging) MinimalRed else MinimalGray,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(6.dp))
-
-            Text(
-                text = title,
-                fontFamily = AppleSanFranciscoFontFamily,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = MinimalWhite
-            )
-        }
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (index > 0) {
-                IconButton(
-                    onClick = onMoveUp,
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.ArrowUpward, contentDescription = "Move Up", tint = MinimalRed, modifier = Modifier.size(16.dp))
-                }
-            }
-            if (index < totalCount - 1) {
-                IconButton(
-                    onClick = onMoveDown,
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.ArrowDownward, contentDescription = "Move Down", tint = MinimalRed, modifier = Modifier.size(16.dp))
-                }
-            }
-            IconButton(
-                onClick = onRemove,
-                modifier = Modifier.size(28.dp)
-            ) {
-                Icon(imageVector = Icons.Default.Close, contentDescription = "Remove", tint = MinimalGray, modifier = Modifier.size(16.dp))
             }
         }
     }

@@ -360,22 +360,20 @@ fun MinimalHomeCalendarWidget(
     }
 }
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun MinimalHomeShortcutsWidget(
     favoriteApps: List<AppInfo>,
     onLaunchApp: (AppInfo) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    androidx.compose.foundation.layout.FlowRow(
+    Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.Center
     ) {
-        favoriteApps.forEach { app ->
+        favoriteApps.take(4).forEach { app ->
             Box(
                 modifier = Modifier
-                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                    .padding(horizontal = 4.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MinimalDarkCardBg)
                     .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
