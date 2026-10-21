@@ -230,13 +230,12 @@ fun CommandHelpDialog(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "You can add your own custom command shortcuts in Settings!\n" +
-                                    "Examples:\n" +
-                                    "• 'yt' ➔ https://youtube.com\n" +
-                                    "• 'gh' ➔ https://github.com\n" +
-                                    "• 'wifi' ➔ opens Android Wi-Fi Settings\n" +
-                                    "• 'standup' ➔ * Daily team standup at 10am\n\n" +
-                                    "Go to Settings ➔ Custom Commands to add as many as you like.",
+                            text = "You can create custom shortcuts directly in the Command Box or in Settings!\n\n" +
+                                    "• Set directly: alias yt = https://youtube.com\n" +
+                                    "• System settings: alias wifi = android.settings.WIFI_SETTINGS\n" +
+                                    "• View all: alias list\n" +
+                                    "• Delete: unalias yt\n\n" +
+                                    "You can also manage them visually in Settings ➔ Custom Commands.",
                             fontSize = 12.sp,
                             color = MinimalWhite,
                             lineHeight = 18.sp

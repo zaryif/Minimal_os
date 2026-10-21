@@ -58,6 +58,15 @@ class ExecuteCommandUseCase(
         val firstToken = trimmed.split(" ").first().lowercase()
         val remainingArgs = if (trimmed.contains(" ")) trimmed.substringAfter(" ").trim() else ""
 
+        // 1a. Create, list, or delete custom aliases directly in command box!
+        if (firstToken == "alias" || firstToken == "custom" || firstToken == "setalias") {
+            return handleAliasCommand(remainingArgs)
+        }
+        if (firstToken == "unalias" || firstToken == "rmalias") {
+            return handleUnaliasCommand(remainingArgs)
+        }
+
+        // 1b. Check user-defined custom commands/aliases
         if (customMap.containsKey(firstToken)) {
             val target = customMap[firstToken] ?: ""
             return executeCustomCommand(target, remainingArgs)
@@ -763,6 +772,52 @@ class ExecuteCommandUseCase(
         return handleAppSearchOrWebFallback(query)
     }
 
+    private fun handleAliasCommand(args: String): CommandResult {
+        val trimmed = args.trim()
+        if (trimmed.isEmpty() || trimmed.equals("list", ignoreCase = true)) {
+            val customMap = runBlocking {
+                try { userPreferences.customCommands.first() } catch (_: Exception) { emptyMap() }
+            }
+            if (customMap.isEmpty()) {
+                return CommandResult.Success("No custom aliases set. Type: alias <key> = <action>")
+            }
+            val formatted = customMap.entries.joinToString("\n") { (k, v) -> "• $k ➔ $v" }
+            return CommandResult.Success("Custom Aliases:\n$formatted")
+        }
+
+        val key: String
+        val target: String
+        if (trimmed.contains("=")) {
+            key = trimmed.substringBefore("=").trim().lowercase()
+            target = trimmed.substringAfter("=").trim()
+        } else if (trimmed.contains(" ")) {
+            key = trimmed.substringBefore(" ").trim().lowercase()
+            target = trimmed.substringAfter(" ").trim()
+        } else {
+            return CommandResult.Error("Usage: alias <key> = <target>\nExample: alias yt = https://youtube.com")
+        }
+
+        if (key.isBlank() || target.isBlank()) {
+            return CommandResult.Error("Invalid alias format. Example: alias yt = https://youtube.com")
+        }
+
+        runBlocking {
+            userPreferences.setCustomCommand(key, target)
+        }
+        return CommandResult.Success("Saved custom alias '$key' ➔ $target")
+    }
+
+    private fun handleUnaliasCommand(args: String): CommandResult {
+        val key = args.trim().lowercase()
+        if (key.isEmpty()) {
+            return CommandResult.Error("Usage: unalias <key>\nExample: unalias yt")
+        }
+        runBlocking {
+            userPreferences.removeCustomCommand(key)
+        }
+        return CommandResult.Success("Removed custom alias '$key'")
+    }
+
     private fun handleHelp(): CommandResult {
         val helpList = listOf(
             Pair("help or ~", "Show this complete commands and guide cheat sheet"),
@@ -776,9 +831,11 @@ class ExecuteCommandUseCase(
             Pair("? or ask", "? how far is the moon — ask AI / Gemini / Web"),
             Pair("& or email", "& team@co.com Update — compose email"),
             Pair("^ or drive", "^ project_doc — search files in Google Drive"),
+            Pair("alias", "alias yt = https://youtube.com — set custom command directly"),
+            Pair("unalias", "unalias yt — delete custom command"),
             Pair("app search", "Type any app name (e.g. 'Spotify') to launch"),
             Pair("web search", "Type any question or text to search web"),
-            Pair("custom", "Create custom aliases & triggers in Settings")
+            Pair("custom", "Create and manage custom aliases in Settings")
         )
         return CommandResult.ShowHelp(helpList)
     }
