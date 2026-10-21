@@ -43,14 +43,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.border
 import com.zaryif.minimalos.domain.model.RestrictionMode
 import com.zaryif.minimalos.ui.components.ButtonStyle
 import com.zaryif.minimalos.ui.components.MinimalButton
 import com.zaryif.minimalos.ui.components.MinimalCard
 import com.zaryif.minimalos.ui.theme.MinimalBlack
+import com.zaryif.minimalos.ui.theme.MinimalCardBg
+import com.zaryif.minimalos.ui.theme.MinimalDarkCardBg
+import com.zaryif.minimalos.ui.theme.MinimalDarkGray
 import com.zaryif.minimalos.ui.theme.MinimalGray
 import com.zaryif.minimalos.ui.theme.MinimalRed
 import com.zaryif.minimalos.ui.theme.MinimalWhite
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.History
 
 @Composable
 fun OnboardingScreen(
@@ -239,47 +247,192 @@ private fun StepTypeToDoThings(onNext: () -> Unit) {
             lineHeight = 18.sp
         )
 
-        Spacer(modifier = Modifier.height(36.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         // 2-Column Symbols Grid
         Row(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
                 SymbolRow(symbol = "@", name = "message")
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 SymbolRow(symbol = "-", name = "to-do")
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 SymbolRow(symbol = "*", name = "event")
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 SymbolRow(symbol = ":", name = "alarm")
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 SymbolRow(symbol = "#", name = "call")
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 SymbolRow(symbol = "!", name = "note")
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 SymbolRow(symbol = "+", name = "timer")
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 SymbolRow(symbol = "?", name = "ask")
             }
         }
 
-        Spacer(modifier = Modifier.height(36.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        Text(
-            text = "a line with no symbol searches apps. the symbols\nthemselves are yours to remap in settings.",
-            fontSize = 12.sp,
-            color = MinimalGray,
-            lineHeight = 16.sp
-        )
+        // What makes things effortless Card
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MinimalDarkCardBg)
+                .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
+                .padding(14.dp)
+        ) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = MinimalRed,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "WHAT MAKES THINGS EFFORTLESS",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MinimalRed,
+                        letterSpacing = 1.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
 
-        Spacer(modifier = Modifier.weight(1f))
+                EffortlessFeatureRow(
+                    title = "Live Theme Accent Feedback",
+                    description = "When you type an action (- ! # @ : todo call alarm), text changes to your theme accent with a badge so you know it's triggered."
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                EffortlessFeatureRow(
+                    title = "Shell Terminal Command History",
+                    description = "Press on-screen ↑ / ↓ or keyboard arrow keys to instantly cycle through previous commands without retyping."
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                EffortlessFeatureRow(
+                    title = "Smart Zero-Lag Contact Cards",
+                    description = "Type # or @ followed by any name (e.g. '@ Alex') for instant popup contact cards."
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                EffortlessFeatureRow(
+                    title = "Plain English or Symbols",
+                    description = "Natural words like 'todo buy milk' or 'alarm 7am' work just like '- buy milk' and ': 7am'."
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Custom Aliases & Shortcuts Card
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MinimalCardBg)
+                .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
+                .padding(14.dp)
+        ) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Terminal,
+                        contentDescription = null,
+                        tint = MinimalRed,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "CUSTOM ALIASES & SHORTCUTS",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MinimalRed,
+                        letterSpacing = 1.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Create custom shortcuts in the Command Box, Widgets Deck, or Settings:",
+                    fontSize = 12.sp,
+                    color = MinimalWhite
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MinimalDarkCardBg)
+                        .padding(10.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "alias yt https://youtube.com",
+                            fontSize = 12.sp,
+                            color = MinimalRed,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "alias gh https://github.com",
+                            fontSize = 12.sp,
+                            color = MinimalWhite,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Text(
+                            text = "alias wifi android.settings.WIFI_SETTINGS",
+                            fontSize = 12.sp,
+                            color = MinimalWhite,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Text(
+                            text = "unalias yt  (to delete)",
+                            fontSize = 11.sp,
+                            color = MinimalGray,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Manage your aliases visually anytime in Widgets Deck or Settings ➔ Command Aliases.",
+                    fontSize = 11.sp,
+                    color = MinimalGray,
+                    lineHeight = 15.sp
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         MinimalButton(
             text = "next",
             onClick = onNext,
             style = ButtonStyle.PRIMARY
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun EffortlessFeatureRow(title: String, description: String) {
+    Column {
+        Text(
+            text = "• $title",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MinimalWhite
+        )
+        Text(
+            text = description,
+            fontSize = 11.sp,
+            color = MinimalGray,
+            lineHeight = 15.sp,
+            modifier = Modifier.padding(start = 10.dp)
         )
     }
 }

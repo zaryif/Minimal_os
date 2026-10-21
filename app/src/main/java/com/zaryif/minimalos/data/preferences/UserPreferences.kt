@@ -46,7 +46,7 @@ class UserPreferences(private val context: Context) {
         private val ASSISTANT_PACKAGE = stringPreferencesKey("assistant_package")
 
         val DEFAULT_HOME_WIDGETS = listOf("TODOS", "CALENDAR", "SHORTCUTS")
-        val DEFAULT_DECK_WIDGETS = listOf("NOTES", "TODOS", "CALENDAR", "POMODORO", "TIMERS", "SYSTEM_WIDGETS")
+        val DEFAULT_DECK_WIDGETS = listOf("NOTES", "TODOS", "CALENDAR", "POMODORO", "ALARMS", "ALIASES", "TIMERS", "SYSTEM_WIDGETS")
     }
 
     val onboardingCompleted: Flow<Boolean> = context.dataStore.data

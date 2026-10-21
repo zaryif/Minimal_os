@@ -4,6 +4,14 @@ import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.provider.CalendarContract
+import android.provider.AlarmClock
+import java.util.Calendar
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.Launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -103,6 +111,8 @@ fun WidgetsDeckScreen(
     val todos by storageRepository.todos.collectAsState()
     val notes by storageRepository.notes.collectAsState()
     val deckWidgetsOrder by userPreferences.deckWidgetsOrder.collectAsState(initial = UserPreferences.DEFAULT_DECK_WIDGETS)
+    val customCommands by userPreferences.customCommands.collectAsState(initial = emptyMap())
+    val scope = rememberCoroutineScope()
 
     var newTodoText by remember { mutableStateOf("") }
     var newNoteText by remember { mutableStateOf("") }
@@ -245,6 +255,53 @@ fun WidgetsDeckScreen(
                                     onOpenCustomDialog = {
                                         customMinutesInput = (pomodoroWorkDuration / 60).toString()
                                         showCustomPomodoroDialog = true
+                                    }
+                                )
+                            }
+                        }
+
+                        "ALARMS" -> {
+                            item(key = "ALARMS") {
+                                RabbitAlarmWidgetCard(
+                                    onSetAlarm = { query ->
+                                        executeCommandUseCase.execute(":$query")
+                                    },
+                                    onOpenClock = {
+                                        try {
+                                            val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS).apply {
+                                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                            }
+                                            context.startActivity(intent)
+                                        } catch (_: Exception) {
+                                            try {
+                                                val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+                                                    putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+                                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                                }
+                                                context.startActivity(intent)
+                                            } catch (_: Exception) {}
+                                        }
+                                    }
+                                )
+                            }
+                        }
+
+                        "ALIASES" -> {
+                            item(key = "ALIASES") {
+                                RabbitAliasesWidgetCard(
+                                    customCommands = customCommands,
+                                    onRunAlias = { keyword ->
+                                        executeCommandUseCase.execute(keyword)
+                                    },
+                                    onAddAlias = { keyword, target ->
+                                        scope.launch {
+                                            userPreferences.setCustomCommand(keyword, target)
+                                        }
+                                    },
+                                    onDeleteAlias = { keyword ->
+                                        scope.launch {
+                                            userPreferences.removeCustomCommand(keyword)
+                                        }
                                     }
                                 )
                             }
@@ -893,6 +950,472 @@ private fun RabbitPomodoroCard(
                             tint = MinimalWhite,
                             modifier = Modifier.size(22.dp)
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------
+// RABBIT ALARM WIDGET CARD
+// -------------------------------------------------------------
+@Composable
+private fun RabbitAlarmWidgetCard(
+    onSetAlarm: (String) -> Unit,
+    onOpenClock: () -> Unit
+) {
+    var newAlarmText by remember { mutableStateOf("") }
+    var statusFeedback by remember { mutableStateOf<String?>(null) }
+
+    val presetAlarms = listOf("6:00 AM", "7:00 AM", "8:00 AM", "9:00 AM", "+30m", "+1h")
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MinimalCardBg)
+            .border(1.dp, MinimalDarkGray, RoundedCornerShape(14.dp))
+            .padding(16.dp)
+    ) {
+        Column {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Alarm,
+                        contentDescription = null,
+                        tint = MinimalRed,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "alarms",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MinimalWhite,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(MinimalDarkCardBg)
+                            .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
+                            .clickable { onOpenClock() }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "CLOCK APP ➔",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MinimalGray
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Quick preset chips
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                presetAlarms.forEach { preset ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MinimalDarkCardBg)
+                            .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
+                            .clickable {
+                                val targetTime = if (preset == "+30m" || preset == "+1h") {
+                                    val cal = Calendar.getInstance()
+                                    if (preset == "+30m") cal.add(Calendar.MINUTE, 30)
+                                    else cal.add(Calendar.HOUR_OF_DAY, 1)
+                                    val sdf = SimpleDateFormat("h:mm a", Locale.US)
+                                    sdf.format(cal.time)
+                                } else {
+                                    preset
+                                }
+                                onSetAlarm(targetTime)
+                                statusFeedback = "Alarm set for $targetTime"
+                            }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = preset,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MinimalWhite
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Inline input
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(42.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MinimalDarkCardBg)
+                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    if (newAlarmText.isEmpty()) {
+                        Text(
+                            text = "set alarm (e.g. 7:30 AM or 8am)…",
+                            style = TextStyle(fontSize = 13.sp, color = MinimalGray)
+                        )
+                    }
+                    BasicTextField(
+                        value = newAlarmText,
+                        onValueChange = { newAlarmText = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        cursorBrush = SolidColor(MinimalRed),
+                        textStyle = TextStyle(fontSize = 13.sp, color = MinimalWhite),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = {
+                            if (newAlarmText.isNotBlank()) {
+                                onSetAlarm(newAlarmText.trim())
+                                statusFeedback = "Alarm set: ${newAlarmText.trim()}"
+                                newAlarmText = ""
+                            }
+                        })
+                    )
+                }
+                if (newAlarmText.isNotEmpty()) {
+                    IconButton(
+                        onClick = {
+                            if (newAlarmText.isNotBlank()) {
+                                onSetAlarm(newAlarmText.trim())
+                                statusFeedback = "Alarm set: ${newAlarmText.trim()}"
+                                newAlarmText = ""
+                            }
+                        },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Set Alarm",
+                            tint = MinimalRed,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            // Feedback badge if alarm was just set
+            statusFeedback?.let { feedback ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(MinimalDarkCardBg)
+                        .border(1.dp, MinimalRed.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = MinimalRed,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = feedback,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MinimalWhite
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Dismiss",
+                        tint = MinimalGray,
+                        modifier = Modifier
+                            .size(14.dp)
+                            .clickable { statusFeedback = null }
+                    )
+                }
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------
+// RABBIT ALIASES & SHORTCUTS WIDGET CARD
+// -------------------------------------------------------------
+@Composable
+private fun RabbitAliasesWidgetCard(
+    customCommands: Map<String, String>,
+    onRunAlias: (String) -> Unit,
+    onAddAlias: (String, String) -> Unit,
+    onDeleteAlias: (String) -> Unit
+) {
+    var showAddRow by remember { mutableStateOf(false) }
+    var aliasKeyword by remember { mutableStateOf("") }
+    var aliasTarget by remember { mutableStateOf("") }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MinimalCardBg)
+            .border(1.dp, MinimalDarkGray, RoundedCornerShape(14.dp))
+            .padding(16.dp)
+    ) {
+        Column {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Terminal,
+                        contentDescription = null,
+                        tint = MinimalRed,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "aliases & shortcuts",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MinimalWhite,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (showAddRow) MinimalDarkCardBg else MinimalRed)
+                            .clickable { showAddRow = !showAddRow }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (showAddRow) "CANCEL" else "+ ADD ALIAS",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MinimalWhite
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Inline add form if expanded
+            if (showAddRow) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MinimalDarkCardBg)
+                        .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
+                        .padding(10.dp)
+                ) {
+                    Text(
+                        text = "NEW ALIAS SHORTCUT",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MinimalRed,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(0.35f)
+                                .height(38.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(MinimalCardBg)
+                                .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
+                                .padding(horizontal = 8.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            if (aliasKeyword.isEmpty()) {
+                                Text("alias (yt)", fontSize = 11.sp, color = MinimalGray)
+                            }
+                            BasicTextField(
+                                value = aliasKeyword,
+                                onValueChange = { aliasKeyword = it },
+                                singleLine = true,
+                                cursorBrush = SolidColor(MinimalRed),
+                                textStyle = TextStyle(fontSize = 12.sp, color = MinimalWhite, fontFamily = FontFamily.Monospace)
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .weight(0.65f)
+                                .height(38.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(MinimalCardBg)
+                                .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
+                                .padding(horizontal = 8.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            if (aliasTarget.isEmpty()) {
+                                Text("url or action", fontSize = 11.sp, color = MinimalGray)
+                            }
+                            BasicTextField(
+                                value = aliasTarget,
+                                onValueChange = { aliasTarget = it },
+                                singleLine = true,
+                                cursorBrush = SolidColor(MinimalRed),
+                                textStyle = TextStyle(fontSize = 12.sp, color = MinimalWhite, fontFamily = FontFamily.Monospace)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (aliasKeyword.isNotBlank() && aliasTarget.isNotBlank()) MinimalRed else MinimalDarkGray)
+                                .clickable(enabled = aliasKeyword.isNotBlank() && aliasTarget.isNotBlank()) {
+                                    onAddAlias(aliasKeyword.trim(), aliasTarget.trim())
+                                    aliasKeyword = ""
+                                    aliasTarget = ""
+                                    showAddRow = false
+                                }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = "SAVE ALIAS",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MinimalWhite
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            if (customCommands.isEmpty()) {
+                Column {
+                    Text(
+                        text = "No custom aliases created yet. Tap '+ ADD ALIAS' or choose a quick template:",
+                        fontSize = 12.sp,
+                        color = MinimalGray,
+                        lineHeight = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        val templates = listOf(
+                            Triple("yt", "https://youtube.com", "YouTube"),
+                            Triple("gh", "https://github.com", "GitHub"),
+                            Triple("wifi", "android.settings.WIFI_SETTINGS", "Wi-Fi")
+                        )
+                        templates.forEach { (kw, target, label) ->
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MinimalDarkCardBg)
+                                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
+                                    .clickable { onAddAlias(kw, target) }
+                                    .padding(vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "+ $label",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MinimalRed
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                // List active aliases
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    customCommands.entries.take(6).forEach { (keyword, target) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MinimalDarkCardBg)
+                                .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
+                            .clickable { onRunAlias(keyword) }
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = keyword,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MinimalRed,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "RUN ➔",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MinimalGray
+                                    )
+                                }
+                                Text(
+                                    text = target,
+                                    fontSize = 11.sp,
+                                    color = MinimalGray,
+                                    fontFamily = FontFamily.Monospace,
+                                    maxLines = 1
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { onDeleteAlias(keyword) },
+                                modifier = Modifier.size(26.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DeleteOutline,
+                                    contentDescription = "Delete",
+                                    tint = MinimalGray,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }

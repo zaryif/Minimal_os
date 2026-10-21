@@ -815,6 +815,8 @@ fun SettingsScreen(
                     Pair("TODOS", "to-dos card"),
                     Pair("CALENDAR", "schedule & events card"),
                     Pair("POMODORO", "pomodoro focus card"),
+                    Pair("ALARMS", "alarm clock card"),
+                    Pair("ALIASES", "aliases & commands card"),
                     Pair("TIMERS", "quick timers card"),
                     Pair("SYSTEM_WIDGETS", "system app widgets")
                 )
