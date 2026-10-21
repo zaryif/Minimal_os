@@ -35,15 +35,17 @@ fun MinimalOSTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val activity = view.context.findActivity()
-            activity?.window?.let { window ->
-                window.statusBarColor = currentActiveTheme.background.toArgb()
-                window.navigationBarColor = currentActiveTheme.background.toArgb()
-                WindowCompat.getInsetsController(window, view).apply {
-                    isAppearanceLightStatusBars = false
-                    isAppearanceLightNavigationBars = false
+            try {
+                val activity = view.context.findActivity()
+                activity?.window?.let { window ->
+                    window.statusBarColor = currentActiveTheme.background.toArgb()
+                    window.navigationBarColor = currentActiveTheme.background.toArgb()
+                    WindowCompat.getInsetsController(window, view).apply {
+                        isAppearanceLightStatusBars = false
+                        isAppearanceLightNavigationBars = false
+                    }
                 }
-            }
+            } catch (_: Throwable) {}
         }
     }
 

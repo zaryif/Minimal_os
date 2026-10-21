@@ -2,13 +2,9 @@ package com.zaryif.minimalos
 
 import android.app.Activity
 import android.appwidget.AppWidgetHost
-import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
-import android.appwidget.AppWidgetProviderInfo
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -42,28 +38,6 @@ import com.zaryif.minimalos.ui.theme.MinimalBlack
 import com.zaryif.minimalos.ui.theme.MinimalOSTheme
 import com.zaryif.minimalos.ui.widgets.WidgetsDeckScreen
 import kotlinx.coroutines.launch
-
-class CustomAppWidgetHost(context: Context, hostId: Int) : AppWidgetHost(context, hostId) {
-    override fun onCreateView(
-        context: Context,
-        appWidgetId: Int,
-        appWidget: AppWidgetProviderInfo?
-    ): AppWidgetHostView {
-        return object : AppWidgetHostView(context) {
-            override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
-                when (ev?.actionMasked) {
-                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                        parent?.requestDisallowInterceptTouchEvent(true)
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        parent?.requestDisallowInterceptTouchEvent(false)
-                    }
-                }
-                return super.dispatchTouchEvent(ev)
-            }
-        }
-    }
-}
 
 enum class ScreenState {
     ONBOARDING,
@@ -167,7 +141,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         appWidgetManager = AppWidgetManager.getInstance(this)
-        appWidgetHost = CustomAppWidgetHost(this, APPWIDGET_HOST_ID)
+        appWidgetHost = AppWidgetHost(this, APPWIDGET_HOST_ID)
 
         userPreferences = UserPreferences(this)
         appRepository = AppRepository(this)
@@ -238,11 +212,8 @@ fun MinimalAppContent(
     val scope = rememberCoroutineScope()
     val installedApps = remember { appRepository.getInstalledApps() }
     val deckWidgetIds by userPreferences.deckSystemWidgets.collectAsState(initial = emptySet())
-    val onboardingCompleted by userPreferences.onboardingCompleted.collectAsState(initial = true)
 
-    var currentScreen by remember(onboardingCompleted) {
-        mutableStateOf(if (onboardingCompleted) ScreenState.HOME else ScreenState.ONBOARDING)
-    }
+    var currentScreen by remember { mutableStateOf(ScreenState.HOME) }
 
     // Mini Apps bottom sheet states
     var showMemoSheet by remember { mutableStateOf(false) }
@@ -321,6 +292,7 @@ fun MinimalAppContent(
                 SettingsScreen(
                     installedApps = installedApps,
                     userPreferences = userPreferences,
+                    onNavigateToOnboarding = { currentScreen = ScreenState.ONBOARDING },
                     onBack = { currentScreen = ScreenState.HOME }
                 )
             }

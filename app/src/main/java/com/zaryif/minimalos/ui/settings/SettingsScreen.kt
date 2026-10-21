@@ -95,6 +95,7 @@ import java.io.File
 fun SettingsScreen(
     installedApps: List<AppInfo>,
     userPreferences: UserPreferences,
+    onNavigateToOnboarding: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -1025,6 +1026,7 @@ fun SettingsScreen(
                     scope.launch {
                         userPreferences.setOnboardingCompleted(false)
                     }
+                    onNavigateToOnboarding()
                 }
             )
 
