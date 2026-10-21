@@ -1,5 +1,6 @@
 package com.zaryif.minimalos.ui.home
 
+import android.app.SearchManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
@@ -7,6 +8,7 @@ import android.net.Uri
 import android.provider.CalendarContract
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -29,7 +31,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
@@ -60,18 +62,19 @@ import com.zaryif.minimalos.data.repository.ContactRepository
 import com.zaryif.minimalos.data.repository.StorageRepository
 import com.zaryif.minimalos.domain.model.AppInfo
 import com.zaryif.minimalos.domain.model.Contact
-import com.zaryif.minimalos.domain.model.RestrictionMode
 import com.zaryif.minimalos.domain.usecase.CommandResult
 import com.zaryif.minimalos.domain.usecase.ExecuteCommandUseCase
 import com.zaryif.minimalos.ui.components.CommandBar
 import com.zaryif.minimalos.ui.components.MinimalHomeWidgets
 import com.zaryif.minimalos.ui.components.MinimalNotificationBanner
 import com.zaryif.minimalos.ui.theme.MinimalBlack
+import com.zaryif.minimalos.ui.theme.MinimalCardBg
+import com.zaryif.minimalos.ui.theme.MinimalDarkCardBg
 import com.zaryif.minimalos.ui.theme.MinimalDarkGray
 import com.zaryif.minimalos.ui.theme.MinimalGray
+import com.zaryif.minimalos.ui.theme.MinimalRed
 import com.zaryif.minimalos.ui.theme.MinimalWhite
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -80,7 +83,6 @@ import java.util.Locale
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
-    restrictionMode: RestrictionMode,
     installedApps: List<AppInfo>,
     storageRepository: StorageRepository,
     contactRepository: ContactRepository,
@@ -91,14 +93,12 @@ fun HomeScreen(
     onNavigateToWidgets: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onOpenMemo: () -> Unit,
-    onOpenClock: () -> Unit,
-    onOpenAsk: () -> Unit
+    onOpenClock: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-
     val todos by storageRepository.todos.collectAsState()
     val wallpaperUriString by userPreferences.customWallpaperUri.collectAsState(initial = null)
+    val favoriteAppPackages by userPreferences.favoriteApps.collectAsState(initial = emptySet())
 
     var notificationMessage by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
@@ -107,6 +107,10 @@ fun HomeScreen(
 
     val isImeVisible = WindowInsets.isImeVisible
     val isTyping = isImeVisible || query.isNotEmpty()
+
+    val favoriteApps = remember(favoriteAppPackages, installedApps) {
+        installedApps.filter { it.packageName in favoriteAppPackages }
+    }
 
     // Live clock
     var currentTime by remember { mutableStateOf("") }
@@ -233,37 +237,30 @@ fun HomeScreen(
                 }
                 .padding(horizontal = 22.dp, vertical = 8.dp)
         ) {
-            // 1. Top Bar: Restriction Mode Badge + Mini Apps
+            // 1. Top Bar: Title & Mini Apps Shortcuts
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (restrictionMode != RestrictionMode.UNRESTRICTED) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(MinimalDarkGray)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = restrictionMode.title,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MinimalWhite
-                        )
-                    }
-                } else {
-                    Spacer(modifier = Modifier.width(1.dp))
-                }
+                Text(
+                    text = "minimal",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MinimalWhite,
+                    letterSpacing = 1.sp
+                )
 
-                // Mini Apps Shortcuts (Memo icon corrected to EditNote)
+                // Mini Apps Shortcuts (Assistant, Clock, Memo, Settings)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onOpenAsk, modifier = Modifier.size(36.dp)) {
+                    IconButton(
+                        onClick = { launchNativeAssistant(context) },
+                        modifier = Modifier.size(36.dp)
+                    ) {
                         Icon(
-                            imageVector = Icons.Default.ChatBubbleOutline,
-                            contentDescription = "Ask",
-                            tint = MinimalGray,
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = "Assistant",
+                            tint = MinimalRed,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -341,6 +338,37 @@ fun HomeScreen(
                                 } catch (_: Exception) {}
                             }
                         )
+
+                        // User-configured Favorite App Shortcuts (if configured in Settings)
+                        if (favoriteApps.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                favoriteApps.take(4).forEach { app ->
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(horizontal = 4.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(MinimalDarkCardBg)
+                                            .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
+                                            .clickable {
+                                                val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                                intent?.let { context.startActivity(it) }
+                                            }
+                                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = app.label,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MinimalWhite
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 } else {
                     // Compact header when typing to leave maximum space for suggestions and input
@@ -438,3 +466,37 @@ fun HomeScreen(
     }
 }
 
+private fun launchNativeAssistant(context: Context) {
+    val voiceIntent = Intent(Intent.ACTION_VOICE_COMMAND).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+    }
+    try {
+        context.startActivity(voiceIntent)
+    } catch (_: Exception) {
+        val assistIntent = Intent(Intent.ACTION_ASSIST).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        try {
+            context.startActivity(assistIntent)
+        } catch (_: Exception) {
+            val geminiIntent = context.packageManager.getLaunchIntentForPackage("com.google.android.apps.bard")
+            if (geminiIntent != null) {
+                geminiIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                context.startActivity(geminiIntent)
+            } else {
+                val searchIntent = Intent(Intent.ACTION_WEB_SEARCH).apply {
+                    putExtra(SearchManager.QUERY, "")
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                try {
+                    context.startActivity(searchIntent)
+                } catch (_: Exception) {
+                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://gemini.google.com/app")).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(browserIntent)
+                }
+            }
+        }
+    }
+}

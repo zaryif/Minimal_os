@@ -68,7 +68,7 @@ fun CommandBar(
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
     val command = CommandParser.parse(query)
-    val hasPrefix = command.type != CommandType.SEARCH && query.isNotEmpty()
+    val hasPrefix = query.isNotBlank() && CommandType.fromSymbol(query.trim().first()) != null
     val isCallingOrMessaging = command.type == CommandType.CALL || command.type == CommandType.MESSAGE
 
     fun submitCommand(input: String) {

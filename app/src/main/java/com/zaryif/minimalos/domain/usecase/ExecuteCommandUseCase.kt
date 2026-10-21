@@ -430,38 +430,73 @@ class ExecuteCommandUseCase(
     }
 
     private fun handleAsk(arg: String): CommandResult {
-        val query = if (arg.isBlank()) "minimalism" else arg
-        val provider = runBlocking { userPreferences.aiProvider.first() }
+        val query = arg.trim()
 
-        if (provider.packageName != null) {
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(provider.packageName)
-            if (launchIntent != null) {
-                launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                launchIntent.putExtra(Intent.EXTRA_TEXT, query)
+        // 1. If Gemini app is installed, launch it directly
+        val geminiPkg = "com.google.android.apps.bard"
+        val pm = context.packageManager
+        val isGeminiInstalled = try {
+            pm.getPackageInfo(geminiPkg, 0)
+            true
+        } catch (_: Exception) {
+            false
+        }
+
+        if (isGeminiInstalled) {
+            val intent = pm.getLaunchIntentForPackage(geminiPkg)
+            if (intent != null) {
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                if (query.isNotEmpty()) {
+                    intent.putExtra(Intent.EXTRA_TEXT, query)
+                }
                 try {
-                    context.startActivity(launchIntent)
-                    return CommandResult.Success("Opening ${provider.displayName} for '$query'…")
+                    context.startActivity(intent)
+                    return CommandResult.Success("Opening Google Gemini…")
                 } catch (_: Exception) {}
             }
         }
 
-        val url = when (provider) {
-            AiProvider.GOOGLE -> "https://www.google.com/search?q=${Uri.encode(query)}"
-            AiProvider.GEMINI -> "https://gemini.google.com/app?q=${Uri.encode(query)}"
-            AiProvider.CHATGPT -> "https://chatgpt.com/?q=${Uri.encode(query)}"
-            AiProvider.CLAUDE -> "https://claude.ai/new?q=${Uri.encode(query)}"
+        // 2. Direct Android Digital Assistant / Voice Assistant overlay
+        if (query.isEmpty()) {
+            val assistIntent = Intent(Intent.ACTION_VOICE_COMMAND).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            try {
+                context.startActivity(assistIntent)
+                return CommandResult.Success("Opening Assistant…")
+            } catch (_: Exception) {
+                val assistFallback = Intent(Intent.ACTION_ASSIST).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                try {
+                    context.startActivity(assistFallback)
+                    return CommandResult.Success("Opening Assistant…")
+                } catch (_: Exception) {}
+            }
         }
 
-        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+        // 3. Web Search with query directly launched
+        val searchIntent = Intent(Intent.ACTION_WEB_SEARCH).apply {
+            putExtra(android.app.SearchManager.QUERY, query)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         return try {
-            context.startActivity(browserIntent)
-            CommandResult.Success("Asking ${provider.displayName} '$query'…")
-        } catch (e: Exception) {
-            CommandResult.Error("Could not query ${provider.displayName}: ${e.message}")
+            context.startActivity(searchIntent)
+            CommandResult.Success("Searching '$query'…")
+        } catch (_: Exception) {
+            val browserFallback = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("https://www.google.com/search?q=${Uri.encode(query)}")
+            ).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
+            try {
+                context.startActivity(browserFallback)
+                CommandResult.Success("Opening search for '$query'")
+            } catch (e: Exception) {
+                CommandResult.Error("Could not launch assistant: ${e.message}")
+            }
         }
     }
+
 
     /**
      * If user typed arbitrary natural text and it doesn't match an app name,

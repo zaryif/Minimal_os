@@ -19,10 +19,30 @@ object CommandParser {
         val firstChar = trimmed.first()
         val symbolCommand = CommandType.fromSymbol(firstChar)
         if (symbolCommand != null) {
+            var arg = trimmed.drop(1).trim()
+            val redundantPrefixes = when (symbolCommand) {
+                CommandType.NOTE -> listOf("note ", "notes ", "memo ", "keep ")
+                CommandType.TODO -> listOf("todo ", "task ", "reminder ", "remind ")
+                CommandType.CALL -> listOf("call ", "dial ")
+                CommandType.MESSAGE -> listOf("msg ", "sms ", "text ", "message ")
+                CommandType.EVENT -> listOf("event ", "cal ", "calendar ", "schedule ")
+                CommandType.ALARM -> listOf("set alarm ", "alarm ")
+                CommandType.TIMER -> listOf("set timer ", "timer ")
+                CommandType.DRIVE -> listOf("drive ")
+                CommandType.EMAIL -> listOf("mail ", "email ")
+                CommandType.ASK -> listOf("ask ", "search ", "google ", "find ")
+                else -> emptyList()
+            }
+            for (p in redundantPrefixes) {
+                if (arg.lowercase().startsWith(p)) {
+                    arg = arg.substring(p.length).trim()
+                    break
+                }
+            }
             return Command(
                 type = symbolCommand,
                 rawInput = input,
-                argument = trimmed.drop(1).trim()
+                argument = arg
             )
         }
 
@@ -68,3 +88,4 @@ object CommandParser {
         val commandType: CommandType
     )
 }
+

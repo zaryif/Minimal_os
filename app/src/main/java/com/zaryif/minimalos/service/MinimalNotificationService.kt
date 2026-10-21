@@ -163,43 +163,6 @@ class MinimalNotificationService : NotificationListenerService() {
                 _notifications.value = _notifications.value.filterNot { it.key == key }
             }
         }
-
-        fun setMockDataIfEmpty() {
-            if (_notifications.value.isEmpty()) {
-                val now = System.currentTimeMillis()
-                _notifications.value = listOf(
-                    NotificationItem(
-                        id = 1,
-                        key = "mock_1",
-                        appName = "Messages",
-                        title = "jason m.",
-                        content = "on my way",
-                        timestamp = now - 60_000,
-                        packageName = "com.google.android.apps.messaging",
-                        category = NotificationCategory.MESSAGE
-                    ),
-                    NotificationItem(
-                        id = 2,
-                        key = "mock_2",
-                        appName = "Phone",
-                        title = "mum",
-                        content = "missed call",
-                        timestamp = now - 5 * 60_000,
-                        packageName = "com.google.android.dialer",
-                        category = NotificationCategory.CALLS
-                    ),
-                    NotificationItem(
-                        id = 3,
-                        key = "mock_3",
-                        appName = "Gmail",
-                        title = "amara w.",
-                        content = "lunch thursday?",
-                        timestamp = now - 60 * 60_000,
-                        packageName = "com.google.android.gm",
-                        category = NotificationCategory.EMAIL
-                    )
-                )
-            }
-        }
     }
 }
+

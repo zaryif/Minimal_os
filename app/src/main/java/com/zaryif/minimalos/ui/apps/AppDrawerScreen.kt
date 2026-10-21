@@ -40,7 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zaryif.minimalos.domain.model.AppInfo
-import com.zaryif.minimalos.domain.model.RestrictionMode
 import com.zaryif.minimalos.ui.theme.MinimalBlack
 import com.zaryif.minimalos.ui.theme.MinimalCardBg
 import com.zaryif.minimalos.ui.theme.MinimalDarkGray
@@ -51,7 +50,6 @@ import com.zaryif.minimalos.ui.theme.MinimalWhite
 @Composable
 fun AppDrawerScreen(
     apps: List<AppInfo>,
-    restrictionMode: RestrictionMode,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current

@@ -22,11 +22,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,7 +38,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,11 +49,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.zaryif.minimalos.data.preferences.AiProvider
 import com.zaryif.minimalos.data.preferences.UserPreferences
-import com.zaryif.minimalos.domain.model.RestrictionMode
-import com.zaryif.minimalos.ui.components.MinimalCard
+import com.zaryif.minimalos.domain.model.AppInfo
 import com.zaryif.minimalos.ui.theme.MinimalBlack
+import com.zaryif.minimalos.ui.theme.MinimalCardBg
 import com.zaryif.minimalos.ui.theme.MinimalDarkCardBg
 import com.zaryif.minimalos.ui.theme.MinimalDarkGray
 import com.zaryif.minimalos.ui.theme.MinimalGray
@@ -56,16 +64,17 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
-    currentMode: RestrictionMode,
+    installedApps: List<AppInfo>,
     userPreferences: UserPreferences,
-    onSelectMode: (RestrictionMode) -> Unit,
-    onResetOnboarding: () -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val selectedAiProvider by userPreferences.aiProvider.collectAsState(initial = AiProvider.GEMINI)
     val customWallpaperUri by userPreferences.customWallpaperUri.collectAsState(initial = null)
+    val favoriteAppPackages by userPreferences.favoriteApps.collectAsState(initial = emptySet())
+
+    var showAppPickerModal by remember { mutableStateOf(false) }
 
     // Photo Gallery Wallpaper Picker
     val wallpaperPickerLauncher = rememberLauncherForActivityResult(
@@ -82,7 +91,7 @@ fun SettingsScreen(
             .background(MinimalBlack)
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 20.dp)
+            .padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
         Column(
             modifier = Modifier
@@ -113,42 +122,71 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Section: Restriction Mode
+            // SECTION 1: HOME SCREEN APP SHORTCUTS
             Text(
-                text = "RESTRICTION MODE",
+                text = "HOME SCREEN APP SHORTCUTS",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = MinimalRed,
                 letterSpacing = 1.sp
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            MinimalCard(
-                title = "monk mode",
-                subtitle = "essentials only, grayscale always",
-                isSelected = currentMode == RestrictionMode.MONK,
-                onClick = { onSelectMode(RestrictionMode.MONK) }
-            )
+            val favoriteAppsList = remember(favoriteAppPackages, installedApps) {
+                installedApps.filter { it.packageName in favoriteAppPackages }
+            }
+
+            if (favoriteAppsList.isEmpty()) {
+                Text(
+                    text = "No shortcuts pinned to Home. Tap below to choose apps.",
+                    fontSize = 13.sp,
+                    color = MinimalGray
+                )
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    favoriteAppsList.take(5).forEach { app ->
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MinimalDarkCardBg)
+                                .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = app.label,
+                                fontSize = 12.sp,
+                                color = MinimalWhite
+                            )
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(10.dp))
-            MinimalCard(
-                title = "focus",
-                subtitle = "everything, distracting apps on a clock",
-                isSelected = currentMode == RestrictionMode.FOCUS,
-                onClick = { onSelectMode(RestrictionMode.FOCUS) }
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            MinimalCard(
-                title = "unrestricted",
-                subtitle = "everything, no guardrails",
-                isSelected = currentMode == RestrictionMode.UNRESTRICTED,
-                onClick = { onSelectMode(RestrictionMode.UNRESTRICTED) }
-            )
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MinimalRed)
+                    .clickable { showAppPickerModal = true }
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = if (favoriteAppsList.isEmpty()) "+ CHOOSE HOME SHORTCUTS" else "EDIT HOME SHORTCUTS",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MinimalWhite
+                )
+            }
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Section: AI Assistant Provider
+            // SECTION 2: AI ASSISTANT PROVIDER
             Text(
-                text = "DEFAULT AI ASSISTANT",
+                text = "DEFAULT ASSISTANT",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = MinimalRed,
@@ -186,7 +224,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Section: Wallpaper & Customization
+            // SECTION 3: WALLPAPER & APPEARANCE
             Text(
                 text = "WALLPAPER & APPEARANCE",
                 fontSize = 12.sp,
@@ -199,9 +237,7 @@ fun SettingsScreen(
             SettingsActionRow(
                 title = "choose wallpaper from photos",
                 subtitle = if (customWallpaperUri != null) "custom photo active (tap to change)" else "select an image from your gallery",
-                onClick = {
-                    wallpaperPickerLauncher.launch("image/*")
-                }
+                onClick = { wallpaperPickerLauncher.launch("image/*") }
             )
 
             if (customWallpaperUri != null) {
@@ -209,9 +245,7 @@ fun SettingsScreen(
                 SettingsActionRow(
                     title = "reset to pure AMOLED black",
                     subtitle = "restore default zero-distraction black background",
-                    onClick = {
-                        scope.launch { userPreferences.setCustomWallpaperUri(null) }
-                    }
+                    onClick = { scope.launch { userPreferences.setCustomWallpaperUri(null) } }
                 )
             }
 
@@ -233,9 +267,9 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Section: System
+            // SECTION 4: SYSTEM CONFIGURATION
             Text(
-                text = "SYSTEM",
+                text = "SYSTEM CONFIGURATION",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = MinimalRed,
@@ -268,17 +302,9 @@ fun SettingsScreen(
                 }
             )
 
-            HorizontalDivider(color = MinimalDarkGray, thickness = 0.5.dp)
-
-            SettingsActionRow(
-                title = "replay onboarding",
-                subtitle = "walk through the introduction guide again",
-                onClick = onResetOnboarding
-            )
-
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Section: Command Symbols & Keywords Reference
+            // SECTION 5: COMMAND REFERENCE
             Text(
                 text = "COMMAND REFERENCE (SYMBOLS & WORDS)",
                 fontSize = 12.sp,
@@ -293,12 +319,12 @@ fun SettingsScreen(
                 Pair("# or call", "call — dial phone number or contact directly"),
                 Pair("- or todo", "to-do — add task item to Minimal Memo"),
                 Pair("! or note", "note — saves to Minimal Memo & Google Keep"),
-                Pair("* or event", "event — schedule event directly in Google Calendar (with natural time)"),
+                Pair("* or event", "event — schedule directly in Calendar with natural time"),
                 Pair("+ or timer", "timer — set countdown timer instantly"),
                 Pair(": or alarm", "alarm — set alarm instantly (e.g. :7:30am)"),
                 Pair("^ or drive", "drive — search inside Google Drive"),
                 Pair("& or mail", "email — compose message via Gmail"),
-                Pair("? or ask", "ask — queries your selected AI assistant (Gemini/ChatGPT/Claude)"),
+                Pair("? or ask", "assistant — voice or chat directly with Gemini / Google"),
                 Pair("(text)", "search installed apps or searches web automatically")
             )
 
@@ -327,7 +353,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // About
+            // ABOUT
             Text(
                 text = "ABOUT",
                 fontSize = 12.sp,
@@ -337,13 +363,122 @@ fun SettingsScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Minimal OS Launcher v1.2.0\nCreated by MD. Zarif Azfar\nPure text-first minimalist experience with full automation capabilities.",
+                text = "Minimal OS Launcher v1.3.0\nCreated by MD. Zarif Azfar\nPure text-first minimalist experience with full automation capabilities.",
                 fontSize = 13.sp,
                 color = MinimalGray,
                 lineHeight = 18.sp
             )
 
             Spacer(modifier = Modifier.height(40.dp))
+        }
+
+        // App Picker Dialog for Home Shortcuts
+        if (showAppPickerModal) {
+            Dialog(onDismissRequest = { showAppPickerModal = false }) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(480.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MinimalCardBg)
+                        .border(1.dp, MinimalDarkGray, RoundedCornerShape(16.dp))
+                        .padding(18.dp)
+                ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "SELECT HOME SHORTCUTS",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MinimalWhite
+                            )
+                            IconButton(onClick = { showAppPickerModal = false }, modifier = Modifier.size(28.dp)) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close",
+                                    tint = MinimalGray,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        LazyColumn(
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            items(installedApps) { app ->
+                                val isFav = app.packageName in favoriteAppPackages
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isFav) MinimalDarkCardBg else MinimalCardBg)
+                                        .clickable {
+                                            val updated = if (isFav) {
+                                                favoriteAppPackages - app.packageName
+                                            } else {
+                                                favoriteAppPackages + app.packageName
+                                            }
+                                            scope.launch { userPreferences.setFavoriteApps(updated) }
+                                        }
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(20.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(if (isFav) MinimalRed else MinimalDarkCardBg)
+                                            .border(1.dp, if (isFav) MinimalRed else MinimalDarkGray, RoundedCornerShape(4.dp)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (isFav) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = MinimalWhite,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = app.label,
+                                        fontSize = 14.sp,
+                                        color = MinimalWhite,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MinimalRed)
+                                .clickable { showAppPickerModal = false }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "DONE (${favoriteAppPackages.size} selected)",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MinimalWhite
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
