@@ -6,19 +6,22 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Clear
@@ -28,10 +31,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -58,12 +65,19 @@ fun CommandBar(
     onContactSelected: (Contact) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusRequester = remember { FocusRequester() }
     val command = CommandParser.parse(query)
     val hasPrefix = command.type != CommandType.SEARCH && query.isNotEmpty()
     val isCallingOrMessaging = command.type == CommandType.CALL || command.type == CommandType.MESSAGE
 
+    fun submitCommand(input: String) {
+        keyboardController?.hide()
+        onExecute(input)
+    }
+
     Column(modifier = modifier.fillMaxWidth()) {
-        // 1. Contacts auto-complete suggestions if calling or messaging
+        // 1. Contacts auto-complete suggestions if calling or messaging (constrained height with scroll)
         AnimatedVisibility(
             visible = isCallingOrMessaging && matchingContacts.isNotEmpty(),
             enter = fadeIn(),
@@ -76,12 +90,17 @@ fun CommandBar(
                     .clip(RoundedCornerShape(12.dp))
                     .background(MinimalCardBg)
                     .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
+                    .heightIn(max = 180.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 matchingContacts.take(4).forEach { contact ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onContactSelected(contact) }
+                            .clickable {
+                                keyboardController?.hide()
+                                onContactSelected(contact)
+                            }
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -116,7 +135,7 @@ fun CommandBar(
             }
         }
 
-        // 2. App auto-complete suggestions if searching apps
+        // 2. App auto-complete suggestions if searching apps (constrained height with scroll)
         AnimatedVisibility(
             visible = !hasPrefix && query.isNotBlank() && matchingApps.isNotEmpty(),
             enter = fadeIn(),
@@ -129,12 +148,17 @@ fun CommandBar(
                     .clip(RoundedCornerShape(12.dp))
                     .background(MinimalCardBg)
                     .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
+                    .heightIn(max = 160.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
-                matchingApps.take(3).forEach { app ->
+                matchingApps.take(4).forEach { app ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onAppSelected(app) }
+                            .clickable {
+                                keyboardController?.hide()
+                                onAppSelected(app)
+                            }
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -156,7 +180,7 @@ fun CommandBar(
             }
         }
 
-        // 3. Main input container
+        // 3. Main input container - clickable everywhere to focus text field
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -167,7 +191,13 @@ fun CommandBar(
                     if (hasPrefix) MinimalRed else MinimalDarkGray,
                     RoundedCornerShape(14.dp)
                 )
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    focusRequester.requestFocus()
+                }
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             Row(
@@ -192,7 +222,7 @@ fun CommandBar(
                     Spacer(modifier = Modifier.width(8.dp))
                 }
 
-                // Text field
+                // Text field with singleLine, smooth horizontal scroll and clear focus
                 Box(
                     modifier = Modifier.weight(1f),
                     contentAlignment = Alignment.CenterStart
@@ -201,7 +231,7 @@ fun CommandBar(
                         Text(
                             text = "type to do things or search…",
                             style = TextStyle(
-                                fontSize = 14.sp,
+                                fontSize = 15.sp,
                                 color = MinimalGray,
                                 fontWeight = FontWeight.Normal
                             )
@@ -210,8 +240,10 @@ fun CommandBar(
                     BasicTextField(
                         value = query,
                         onValueChange = onQueryChange,
-                        modifier = Modifier.fillMaxWidth(),
-                        maxLines = 2,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester),
+                        singleLine = true,
                         cursorBrush = SolidColor(MinimalRed),
                         textStyle = TextStyle(
                             fontSize = 15.sp,
@@ -223,7 +255,7 @@ fun CommandBar(
                             imeAction = ImeAction.Go
                         ),
                         keyboardActions = KeyboardActions(
-                            onGo = { onExecute(query) }
+                            onGo = { submitCommand(query) }
                         )
                     )
                 }
@@ -243,7 +275,7 @@ fun CommandBar(
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                     IconButton(
-                        onClick = { onExecute(query) },
+                        onClick = { submitCommand(query) },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
@@ -258,3 +290,4 @@ fun CommandBar(
         }
     }
 }
+
