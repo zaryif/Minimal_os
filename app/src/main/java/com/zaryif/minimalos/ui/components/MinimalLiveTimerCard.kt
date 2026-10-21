@@ -69,11 +69,10 @@ fun MinimalLiveTimerCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 6.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .background(MinimalCardBg)
-                .border(1.2.dp, MinimalRed.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .border(1.dp, MinimalRed.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                .padding(14.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),

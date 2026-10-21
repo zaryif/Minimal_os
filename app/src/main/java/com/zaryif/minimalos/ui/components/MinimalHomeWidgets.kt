@@ -44,6 +44,26 @@ import com.zaryif.minimalos.ui.theme.MinimalDarkGray
 import com.zaryif.minimalos.ui.theme.MinimalGray
 import com.zaryif.minimalos.ui.theme.MinimalRed
 import com.zaryif.minimalos.ui.theme.MinimalWhite
+import com.zaryif.minimalos.ui.theme.MinimalOnAccent
+import com.zaryif.minimalos.ui.theme.AppleSanFranciscoFontFamily
+import com.zaryif.minimalos.domain.timer.PomodoroTimerManager
+import android.app.AlarmManager
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.HourglassBottom
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.text.font.FontFamily
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun MinimalDynamicHomeWidgets(
@@ -59,6 +79,7 @@ fun MinimalDynamicHomeWidgets(
     onToggleTodo: (String) -> Unit,
     onOpenMemo: () -> Unit,
     onOpenCalendar: () -> Unit,
+    onOpenClock: () -> Unit = {},
     onLaunchApp: (AppInfo) -> Unit,
     onAddHomeWidget: (() -> Unit)?,
     onDeleteHomeWidget: ((Int) -> Unit)?,
@@ -91,6 +112,16 @@ fun MinimalDynamicHomeWidgets(
                     MinimalHomeCalendarWidget(
                         onOpenCalendar = onOpenCalendar
                     )
+                }
+
+                "ALARM_COUNTDOWN" -> {
+                    MinimalHomeAlarmCountdownWidget(
+                        onOpenClock = onOpenClock
+                    )
+                }
+
+                "POMODORO" -> {
+                    MinimalHomePomodoroWidget()
                 }
 
                 "SHORTCUTS" -> {
@@ -472,3 +503,202 @@ fun MinimalHomeSystemWidgetsSection(
         }
     }
 }
+
+@Composable
+fun MinimalHomeAlarmCountdownWidget(
+    onOpenClock: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    var triggerTime by remember { mutableLongStateOf(0L) }
+    var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    LaunchedEffect(Unit) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+        while (true) {
+            triggerTime = alarmManager?.nextAlarmClock?.triggerTime ?: 0L
+            currentTime = System.currentTimeMillis()
+            delay(1000)
+        }
+    }
+
+    val diffMs = triggerTime - currentTime
+    val hasAlarm = triggerTime > 0L && diffMs > 0L
+
+    val countdownText = remember(diffMs, hasAlarm) {
+        if (!hasAlarm) "no upcoming alarm"
+        else {
+            val totalSeconds = diffMs / 1000
+            val hours = totalSeconds / 3600
+            val minutes = (totalSeconds % 3600) / 60
+            val seconds = totalSeconds % 60
+            when {
+                hours > 0 -> "${hours}h ${minutes}m left"
+                minutes > 0 -> "${minutes}m ${seconds}s left"
+                else -> "${seconds}s left"
+            }
+        }
+    }
+
+    val alarmTimeFormatted = remember(triggerTime, hasAlarm) {
+        if (!hasAlarm) ""
+        else {
+            val sdf = SimpleDateFormat("h:mm a, EEE", Locale.getDefault())
+            sdf.format(Date(triggerTime))
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MinimalCardBg)
+            .border(1.dp, if (hasAlarm) MinimalRed.copy(alpha = 0.5f) else MinimalDarkGray, RoundedCornerShape(12.dp))
+            .clickable { onOpenClock() }
+            .padding(14.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Alarm,
+                    contentDescription = null,
+                    tint = MinimalRed,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "ALARM COUNTDOWN",
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        color = MinimalRed,
+                        letterSpacing = 0.5.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = countdownText,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MinimalWhite
+                    )
+                    if (hasAlarm) {
+                        Text(
+                            text = "rings at $alarmTimeFormatted",
+                            fontSize = 11.sp,
+                            color = MinimalGray
+                        )
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(MinimalDarkCardBg)
+                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = if (hasAlarm) "CLOCK ➔" else "+ SET",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (hasAlarm) MinimalGray else MinimalRed
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun MinimalHomePomodoroWidget(
+    modifier: Modifier = Modifier
+) {
+    val isRunning by PomodoroTimerManager.isRunning.collectAsState()
+    val remainingSeconds by PomodoroTimerManager.remainingSeconds.collectAsState()
+    val isBreak by PomodoroTimerManager.isBreakMode.collectAsState()
+    val timerLabel by PomodoroTimerManager.timerLabel.collectAsState()
+
+    val mins = remainingSeconds / 60
+    val secs = remainingSeconds % 60
+    val timeFormatted = "%02d:%02d".format(mins, secs)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MinimalCardBg)
+            .border(1.dp, if (isRunning) MinimalRed.copy(alpha = 0.6f) else MinimalDarkGray, RoundedCornerShape(12.dp))
+            .padding(14.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.HourglassBottom,
+                    contentDescription = null,
+                    tint = MinimalRed,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = if (isBreak) "BREAK FOCUS" else "${timerLabel.uppercase()} FOCUS",
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        color = MinimalRed,
+                        letterSpacing = 0.5.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = timeFormatted,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = AppleSanFranciscoFontFamily,
+                        color = MinimalWhite
+                    )
+                }
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = { PomodoroTimerManager.toggle() },
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isRunning) "Pause" else "Start",
+                        tint = MinimalRed,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                IconButton(
+                    onClick = { PomodoroTimerManager.reset() },
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Replay,
+                        contentDescription = "Reset",
+                        tint = MinimalGray,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+

@@ -94,10 +94,10 @@ Type symbol + text  ➔  Instant execution
 
 Swipe or tap into the **Widgets Deck** to access purpose-built, high-contrast utility cards inspired by retro-futuristic hardware:
 
-- ⏱️ **Live Pomodoro Focus Card**: Built-in 15m, 25m, 45m, and 60m focus chips, custom duration picker dialog, work/break cycle tracker, and tactile play/pause/reset controls.
-- ⏰ **Custom Alarms & Scheduler Widget**: Tactile custom time-picker dialog with full Hour (1–12), Minute (00–59), AM/PM toggles, and Day selection chips (Today, Tomorrow, Daily, Weekdays) plus relative quick presets (`+15m`, `+30m`, `+1h`, `+8h`).
+- ⏱️ **Live Pomodoro Focus Card**: Built-in 15m, 25m, 45m, and 60m focus chips, custom duration picker dialog, work/break cycle tracker, and tactile play/pause/reset controls. Can also be pinned directly onto the **Home Screen** widgets deck with live controls and matching card width.
+- ⏰ **Custom Alarms & Live Alarm Countdown**: Tactile custom time-picker dialog with full Hour (1–12), Minute (00–59), AM/PM toggles, and Day selection chips (Today, Tomorrow, Daily, Weekdays) plus relative quick presets (`+15m`, `+30m`, `+1h`, `+8h`). Features a **Home Screen Live Alarm Countdown Widget** showing exact time remaining until the next system alarm rings.
+- 📝 **Minimal Memo with Search & Direct Creation**: Full-featured quick memos and to-dos. Includes a dedicated real-time **Search Box** to filter notes and tasks, plus a context-aware **Add Input Bar** to type and create tasks or thoughts directly without leaving the sheet.
 - ⚡ **Aliases & Shortcuts Deck**: Quick template creator and 1-tap launcher for your custom shortcuts (e.g. `yt` ➔ YouTube, `wifi` ➔ Network Settings, `gh` ➔ GitHub).
-- 📝 **Minimal To-Dos & Notes Deck**: Interactive checkboxes to complete tasks on the fly, quick inline note creation, and clean strikethrough state management.
 - ⏲️ **Countdown Timers**: Quick-tap timer presets (`1m`, `5m`, `10m`, `15m`, `25m`) that trigger native Android alarms.
 - 🧩 **Native App Widget Host**: Pin any standard Android app widget (Spotify, Google Keep, Weather) directly into the Minimal OS card system.
 

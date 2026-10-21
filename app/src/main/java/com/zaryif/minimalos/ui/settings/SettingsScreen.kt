@@ -637,6 +637,8 @@ fun SettingsScreen(
                         Pair("NOTES", "notes (recent memos)"),
                         Pair("CALENDAR", "calendar (glance & schedule)"),
                         Pair("SHORTCUTS", "shortcuts (favorite pinned apps)"),
+                        Pair("ALARM_COUNTDOWN", "alarm countdown (live time until alarm)"),
+                        Pair("POMODORO", "pomodoro (live focus & controls)"),
                         Pair("SYSTEM_WIDGETS", "widgets (native Android app widgets)")
                     )
 

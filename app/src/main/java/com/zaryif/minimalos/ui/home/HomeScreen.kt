@@ -444,6 +444,7 @@ fun HomeScreen(
                                     context.startActivity(calIntent)
                                 } catch (_: Exception) {}
                             },
+                            onOpenClock = onOpenClock,
                             onLaunchApp = { app ->
                                 val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
                                 intent?.let { context.startActivity(it) }
