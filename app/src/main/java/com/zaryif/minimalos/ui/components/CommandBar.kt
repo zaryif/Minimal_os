@@ -53,10 +53,15 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zaryif.minimalos.domain.model.AppInfo
@@ -70,6 +75,19 @@ import com.zaryif.minimalos.ui.theme.MinimalGray
 import com.zaryif.minimalos.ui.theme.MinimalRed
 import com.zaryif.minimalos.ui.theme.MinimalWhite
 import com.zaryif.minimalos.ui.theme.MinimalOnAccent
+
+private val BUILTIN_ACTION_KEYWORDS = setOf(
+    "todo", "task",
+    "note", "notes", "memo",
+    "call", "dial",
+    "msg", "sms", "message", "text",
+    "wa", "whatsapp",
+    "alarm", "timer", "event", "cal", "calendar", "schedule",
+    "email", "mail", "drive",
+    "ask", "search", "google", "find",
+    "help", "commands", "man", "guide",
+    "alias", "custom", "setalias", "unalias", "rmalias"
+)
 
 @Composable
 fun CommandBar(
@@ -130,10 +148,57 @@ fun CommandBar(
                 it == "help" || it.startsWith("help ") || it == "commands" || it == "man" || it == "guide"
             }
 
-    // Highlight text with theme accent color when ANY action or alias is triggered
+    // Action detection
     val isActionTriggered = isBuiltInAction || isAliasCommand
-    val inputTextColor = if (isActionTriggered) MinimalRed else MinimalWhite
-    val inputTextWeight = if (isActionTriggered) FontWeight.SemiBold else FontWeight.Normal
+
+    // Inline syntax highlighting: only the action keyword, alias, or trigger symbol is colored in the theme accent
+    val actionSyntaxVisualTransformation = remember(customAliases) {
+        VisualTransformation { text ->
+            val s = text.text
+            val trimmedInput = s.trimStart()
+            val leadingSpaces = s.length - trimmedInput.length
+
+            var triggerEnd = -1
+
+            if (trimmedInput.isNotEmpty()) {
+                val firstChar = trimmedInput[0]
+                if (firstChar in setOf('-', '!', '#', '@', '=', '+', ':', '*', '?', '^', '&')) {
+                    triggerEnd = leadingSpaces + 1
+                } else if (trimmedInput.lowercase().startsWith("set alarm ") || trimmedInput.lowercase() == "set alarm") {
+                    triggerEnd = leadingSpaces + 9
+                } else if (trimmedInput.lowercase().startsWith("set timer ") || trimmedInput.lowercase() == "set timer") {
+                    triggerEnd = leadingSpaces + 9
+                } else {
+                    val firstWord = trimmedInput.substringBefore(" ").lowercase()
+                    val isKnownAction = firstWord in BUILTIN_ACTION_KEYWORDS || customAliases.any { it.equals(firstWord, ignoreCase = true) }
+                    if (isKnownAction && firstWord.isNotEmpty()) {
+                        triggerEnd = leadingSpaces + firstWord.length
+                    }
+                }
+            }
+
+            val builder = AnnotatedString.Builder()
+            if (triggerEnd in 1..s.length) {
+                // Highlight ONLY the trigger keyword/symbol in theme accent color (bold)
+                builder.pushStyle(SpanStyle(color = MinimalRed, fontWeight = FontWeight.Bold))
+                builder.append(s.substring(0, triggerEnd))
+                builder.pop()
+
+                // Keep parameters / payload text in clean crisp white
+                if (triggerEnd < s.length) {
+                    builder.pushStyle(SpanStyle(color = MinimalWhite, fontWeight = FontWeight.Normal))
+                    builder.append(s.substring(triggerEnd))
+                    builder.pop()
+                }
+            } else {
+                builder.pushStyle(SpanStyle(color = MinimalWhite, fontWeight = FontWeight.Normal))
+                builder.append(s)
+                builder.pop()
+            }
+
+            TransformedText(builder.toAnnotatedString(), OffsetMapping.Identity)
+        }
+    }
 
     // Terminal command history state
     var historyIndex by remember { mutableIntStateOf(-1) }
@@ -406,7 +471,7 @@ fun CommandBar(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(MinimalCardBg)
-                .border(1.dp, MinimalDarkGray, RoundedCornerShape(16.dp))
+                .border(1.dp, if (isActionTriggered) MinimalRed.copy(alpha = 0.5f) else MinimalDarkGray, RoundedCornerShape(16.dp))
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             contentAlignment = Alignment.CenterStart
         ) {
@@ -414,51 +479,6 @@ fun CommandBar(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Command badge if active prefix, action keyword, or alias detected
-                val showCommandBadge = hasPrefix || isActionTriggered || (query.contains(":") && (command.type == CommandType.MESSAGE || command.type == CommandType.WHATSAPP))
-                if (showCommandBadge) {
-                    val badgeText = when {
-                        query.contains(":") -> {
-                            val recipient = query.substringBefore(":").replace("whatsapp", "").replace("wa", "").replace("msg", "").replace("@", "").replace("=", "").trim()
-                            if (command.type == CommandType.WHATSAPP || query.lowercase().startsWith("wa")) "WA: $recipient" else "SMS: $recipient"
-                        }
-                        isAliasCommand -> {
-                            if (firstToken in listOf("alias", "custom", "setalias")) "ALIAS"
-                            else if (firstToken in listOf("unalias", "rmalias")) "UNALIAS"
-                            else "ALIAS: $firstToken"
-                        }
-                        command.type == CommandType.TODO || lower.let { it == "todo" || it.startsWith("todo ") || it.startsWith("-") || it == "task" || it.startsWith("task ") } -> "- TODO"
-                        command.type == CommandType.NOTE || lower.let { it == "note" || it == "notes" || it.startsWith("note ") || it.startsWith("notes ") || it.startsWith("!") || it == "memo" || it.startsWith("memo ") } -> "! NOTE"
-                        command.type == CommandType.CALL || lower.let { it == "call" || it.startsWith("call ") || it.startsWith("#") || it == "dial" || it.startsWith("dial ") } -> "# CALL"
-                        command.type == CommandType.MESSAGE || lower.let { it == "msg" || it.startsWith("msg ") || it.startsWith("@") || it == "sms" || it.startsWith("sms ") || it == "message" || it.startsWith("message ") || it == "text" || it.startsWith("text ") } -> "@ SMS"
-                        command.type == CommandType.WHATSAPP || lower.let { it == "wa" || it.startsWith("wa ") || it.startsWith("=") || it == "whatsapp" || it.startsWith("whatsapp ") } -> "= WA"
-                        command.type == CommandType.ALARM || lower.let { it.startsWith("alarm ") || it.startsWith("set alarm ") || it.startsWith("+") } -> "+ ALARM"
-                        command.type == CommandType.TIMER || lower.let { it.startsWith("timer ") || it.startsWith("set timer ") || it.startsWith("*") } -> "* TIMER"
-                        command.type == CommandType.EVENT || lower.let { it.startsWith("event ") || it.startsWith("cal ") || it.startsWith("calendar ") || it.startsWith("schedule ") || it.startsWith(":") } -> ": EVENT"
-                        command.type == CommandType.EMAIL || lower.let { it.startsWith("email ") || it.startsWith("mail ") || it.startsWith("^") } -> "^ EMAIL"
-                        command.type == CommandType.DRIVE || lower.let { it.startsWith("drive ") || it.startsWith("&") } -> "& DRIVE"
-                        command.type == CommandType.ASK || lower.let { it.startsWith("ask ") || it.startsWith("search ") || it.startsWith("google ") || it.startsWith("find ") || it.startsWith("?") } -> "? ASK"
-                        command.type == CommandType.HELP || lower.let { it == "help" || it.startsWith("help ") || it == "commands" || it == "man" || it == "guide" } -> "HELP"
-                        command.type != CommandType.SEARCH -> "${command.type.symbol} ${command.type.displayName}"
-                        else -> "ACTION"
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(MinimalRed)
-                            .padding(horizontal = 7.dp, vertical = 3.dp)
-                    ) {
-                        Text(
-                            text = badgeText,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MinimalOnAccent
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(6.dp))
-                }
-
                 // Terminal History Indicator Badge
                 if (historyIndex >= 0 && commandHistory.isNotEmpty()) {
                     Box(
@@ -479,7 +499,7 @@ fun CommandBar(
                     Spacer(modifier = Modifier.width(6.dp))
                 }
 
-                // Text field with action color highlight and keyboard terminal arrow intercept
+                // Text field with action syntax highlighting and keyboard terminal arrow intercept
                 Box(
                     modifier = Modifier.weight(1f),
                     contentAlignment = Alignment.CenterStart
@@ -524,10 +544,11 @@ fun CommandBar(
                         cursorBrush = SolidColor(MinimalRed),
                         textStyle = TextStyle(
                             fontSize = 15.sp,
-                            color = inputTextColor,
-                            fontWeight = inputTextWeight,
+                            color = MinimalWhite,
+                            fontWeight = FontWeight.Normal,
                             lineHeight = 20.sp
                         ),
+                        visualTransformation = actionSyntaxVisualTransformation,
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Go
                         ),

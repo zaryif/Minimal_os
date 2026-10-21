@@ -13,7 +13,7 @@
 
 *Type to do things. One hub for everything. Zero visual noise.*
 
-[Download Latest APK (v1.7.1)](https://github.com/zaryif/Minimal_os/releases/latest) • [Features](#-core-features) • [Inspiration & Vision](#-what-inspired-it) • [What It Solves](#-what-problem-is-it-solving) • [Installation](#-installation--setup)
+[Download Latest APK (v1.7.2)](https://github.com/zaryif/Minimal_os/releases/latest) • [Features](#-core-features) • [Inspiration & Vision](#-what-inspired-it) • [What It Solves](#-what-problem-is-it-solving) • [Installation](#-installation--setup)
 
 </div>
 
@@ -82,8 +82,8 @@ Type symbol + text  ➔  Instant execution
 | _(text)_ | **Fuzzy App Search** | `spot` | Real-time app search with instant keyboard launch |
 
 #### 🚀 Terminal Power Features:
+- **Inline Syntax Highlighting**: As soon as you type an action trigger or alias (such as `todo`, `notes`, `yt`, `-`, `!`, or `#`), only the trigger word/symbol lights up in the bold theme accent color, while all arguments and text remain crisp white with zero duplicate badges.
 - **Terminal Command History**: Press the `▲` (Up) and `▼` (Down) history controls right beside the input bar to recall and cycle through your previous commands, exactly like a Linux/macOS shell.
-- **Dynamic Action Badges**: As soon as you type an action trigger (like `-` for to-do or `#` for call), a glowing theme-colored pill badge (`TODO`, `NOTE`, `CALL`, `TIMER`, `ALIAS`, `APP`) lights up to confirm the action before you press enter.
 - **Smart Contact Search**: Search your address book with fuzzy matching and inline permission grant fallbacks.
 
 ---
@@ -155,7 +155,7 @@ Minimal OS is engineered specifically for Android to feel like an integral part 
 ### Download APK
 Grab the latest release directly from GitHub:
 
-📦 **[Download Minimal OS Launcher v1.7.1 APK](https://github.com/zaryif/Minimal_os/releases/latest)**
+📦 **[Download Minimal OS Launcher v1.7.2 APK](https://github.com/zaryif/Minimal_os/releases/latest)**
 
 ### Setting as Default Launcher
 1. Install the downloaded `.apk` file (enable *"Install from unknown sources"* if prompted).
