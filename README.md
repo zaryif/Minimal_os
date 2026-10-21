@@ -63,8 +63,10 @@ Set up your digital diet to eliminate mindless phone habits:
 
 ## 📥 Download APK
 
-You can download the ready-to-install APK directly from:
-- **[GitHub Releases](https://github.com/zaryif/Minimal_os/releases)** (Recommended)
+**⭐ [Download Latest Stable APK (v1.6.0)](https://github.com/zaryif/Minimal_os/releases/download/v1.6.0/MinimalOS-v1.6.0.apk)**
+
+You can also browse all builds directly from:
+- **[GitHub Latest Release](https://github.com/zaryif/Minimal_os/releases/latest)** (Recommended)
 - **[GitHub Actions Artifacts](https://github.com/zaryif/Minimal_os/actions)** (Automated latest build)
 
 ---
