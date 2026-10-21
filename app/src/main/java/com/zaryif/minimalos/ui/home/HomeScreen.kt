@@ -1,11 +1,14 @@
 package com.zaryif.minimalos.ui.home
 
+import android.Manifest
 import android.app.SearchManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.CalendarContract
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -80,6 +83,7 @@ import com.zaryif.minimalos.ui.theme.MinimalGray
 import com.zaryif.minimalos.ui.theme.MinimalRed
 import com.zaryif.minimalos.ui.theme.MinimalWhite
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.InputStream
 import java.text.SimpleDateFormat
@@ -116,12 +120,21 @@ fun HomeScreen(
     val showAllNotesPref by userPreferences.homeShowAllNotes.collectAsState(initial = false)
     val showCommandFeedback by userPreferences.showCommandFeedback.collectAsState(initial = false)
     val assistantPackage by userPreferences.assistantPackage.collectAsState(initial = null)
+    val commandHistory by userPreferences.commandHistory.collectAsState(initial = emptyList())
 
+    val scope = rememberCoroutineScope()
     var notificationMessage by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
     var matchingApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
     var matchingContacts by remember { mutableStateOf<List<Contact>>(emptyList()) }
     var showHelpDialog by remember { mutableStateOf(false) }
+    var hasContactPermission by remember { mutableStateOf(contactRepository.hasPermission()) }
+
+    val contactPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasContactPermission = isGranted
+    }
 
     val isImeVisible = WindowInsets.isImeVisible
     val isTyping = isImeVisible || query.isNotEmpty()
@@ -146,13 +159,13 @@ fun HomeScreen(
     }
 
     // Dynamic autocomplete for apps and contacts as query changes
-    LaunchedEffect(query) {
+    LaunchedEffect(query, hasContactPermission) {
         val lower = query.lowercase().trim()
 
         // 1. Contacts search for calling/messaging/whatsapp
-        matchingContacts = if ((lower.startsWith("#") || lower.startsWith("call ") || lower.startsWith("dial ") ||
-            lower.startsWith("@") || lower.startsWith("msg ") || lower.startsWith("sms ") ||
-            lower.startsWith("message ") || lower.startsWith("=") || lower.startsWith("wa ") || lower.startsWith("whatsapp ")) &&
+        matchingContacts = if ((lower.startsWith("#") || lower.startsWith("call") || lower.startsWith("dial") ||
+            lower.startsWith("@") || lower.startsWith("msg") || lower.startsWith("sms") ||
+            lower.startsWith("message") || lower.startsWith("=") || lower.startsWith("wa") || lower.startsWith("whatsapp")) &&
             !lower.contains(":")
         ) {
             val contactQuery = when {
@@ -164,9 +177,10 @@ fun HomeScreen(
                 lower.startsWith("message ") -> lower.removePrefix("message ").trim()
                 lower.startsWith("wa ") -> lower.removePrefix("wa ").trim()
                 lower.startsWith("whatsapp ") -> lower.removePrefix("whatsapp ").trim()
+                lower == "call" || lower == "dial" || lower == "msg" || lower == "sms" || lower == "message" || lower == "wa" || lower == "whatsapp" -> ""
                 else -> ""
             }
-            if (contactQuery.isNotEmpty()) {
+            if (hasContactPermission) {
                 contactRepository.searchContacts(contactQuery)
             } else {
                 emptyList()
@@ -315,68 +329,70 @@ fun HomeScreen(
                 }
                 .padding(horizontal = 22.dp, vertical = 8.dp)
         ) {
-            // 1. Top Bar: Title & Mini Apps Shortcuts
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "minimal",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MinimalWhite,
-                    letterSpacing = 1.sp
-                )
+            // 1. Top Bar: Title & Mini Apps Shortcuts (only when not typing for maximum vertical clearance)
+            if (!isTyping) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "minimal",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MinimalWhite,
+                        letterSpacing = 1.sp
+                    )
 
-                // Mini Apps Shortcuts (Assistant, Clock, Memo, Settings)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = { launchNativeAssistant(context, assistantPackage) },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = "Assistant",
-                            tint = MinimalRed,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    IconButton(onClick = onOpenClock, modifier = Modifier.size(36.dp)) {
-                        Icon(
-                            imageVector = Icons.Default.Schedule,
-                            contentDescription = "Clock",
-                            tint = MinimalGray,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    IconButton(onClick = onOpenMemo, modifier = Modifier.size(36.dp)) {
-                        Icon(
-                            imageVector = Icons.Default.EditNote,
-                            contentDescription = "Memo",
-                            tint = MinimalGray,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                    IconButton(onClick = onNavigateToSettings, modifier = Modifier.size(36.dp)) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = MinimalGray,
-                            modifier = Modifier.size(18.dp)
-                        )
+                    // Mini Apps Shortcuts (Assistant, Clock, Memo, Settings)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = { launchNativeAssistant(context, assistantPackage) },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = "Assistant",
+                                tint = MinimalRed,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        IconButton(onClick = onOpenClock, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = "Clock",
+                                tint = MinimalGray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        IconButton(onClick = onOpenMemo, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.EditNote,
+                                contentDescription = "Memo",
+                                tint = MinimalGray,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        IconButton(onClick = onNavigateToSettings, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = MinimalGray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
 
-            // 2. Center Area: WEIGHT(1f) ensures it shrinks when keyboard opens so CommandBar is NEVER hidden
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                if (!isTyping) {
+            // 2. Center Area: WEIGHT(1f) ensures it shrinks when keyboard opens so suggestions and CommandBar are NEVER cut off
+            if (!isTyping) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
                     // Full home screen widgets & large clock
                     Column(
                         modifier = Modifier
@@ -434,28 +450,9 @@ fun HomeScreen(
                             onDeleteHomeWidget = onDeleteHomeWidget
                         )
                     }
-                } else {
-                    // Compact header when typing to leave maximum space for suggestions and input
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = currentTime,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Light,
-                            color = MinimalGray
-                        )
-                        Text(
-                            text = "minimal terminal",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MinimalDarkGray
-                        )
-                    }
                 }
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
             }
 
             // 3. Bottom Area: Gesture hints (only when idle) + CommandBar (ALWAYS VISIBLE ABOVE KEYBOARD)
@@ -517,6 +514,9 @@ fun HomeScreen(
                     query = query,
                     onQueryChange = { query = it },
                     onExecute = { input ->
+                        scope.launch {
+                            userPreferences.addCommandToHistory(input)
+                        }
                         val result = executeCommandUseCase.execute(input)
                         when (result) {
                             is CommandResult.Success -> {
@@ -547,12 +547,17 @@ fun HomeScreen(
                     onContactSelected = { contact ->
                         if (query.startsWith("wa") || query.startsWith("=")) {
                             query = "wa ${contact.name}: "
-                        } else if (query.startsWith("#") || query.startsWith("call")) {
+                        } else if (query.startsWith("#") || query.startsWith("call") || query.startsWith("dial")) {
                             query = ""
                             executeCommandUseCase.execute("#${contact.phoneNumber}")
                         } else {
                             query = "@ ${contact.name}: "
                         }
+                    },
+                    commandHistory = commandHistory,
+                    hasContactPermission = hasContactPermission,
+                    onRequestContactPermission = {
+                        contactPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
                     },
                     onHelpRequested = { showHelpDialog = true }
                 )

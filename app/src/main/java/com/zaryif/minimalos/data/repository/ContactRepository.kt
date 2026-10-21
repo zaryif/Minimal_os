@@ -16,8 +16,8 @@ class ContactRepository(private val context: Context) {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    fun searchContacts(query: String): List<Contact> {
-        if (!hasPermission() || query.isBlank()) return emptyList()
+    fun searchContacts(query: String = ""): List<Contact> {
+        if (!hasPermission()) return emptyList()
 
         val results = mutableListOf<Contact>()
         val uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
@@ -27,10 +27,15 @@ class ContactRepository(private val context: Context) {
             ContactsContract.CommonDataKinds.Phone.NUMBER
         )
 
-        val cleanQuery = query.replace("'", "''").trim()
-        val selection = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? OR ${ContactsContract.CommonDataKinds.Phone.NUMBER} LIKE ?"
-        val selectionArgs = arrayOf("%$cleanQuery%", "%$cleanQuery%")
-        val sortOrder = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC LIMIT 6"
+        val cleanQuery = query.trim()
+        val (selection, selectionArgs) = if (cleanQuery.isNotEmpty()) {
+            val sel = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? OR ${ContactsContract.CommonDataKinds.Phone.NUMBER} LIKE ?"
+            val args = arrayOf("%$cleanQuery%", "%$cleanQuery%")
+            sel to args
+        } else {
+            null to null
+        }
+        val sortOrder = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
 
         try {
             val cursor = context.contentResolver.query(
@@ -46,12 +51,12 @@ class ContactRepository(private val context: Context) {
                 val nameIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
                 val numberIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
 
-                while (it.moveToNext()) {
+                while (it.moveToNext() && results.size < 25) {
                     val id = if (idIdx >= 0) it.getString(idIdx) ?: "" else ""
                     val name = if (nameIdx >= 0) it.getString(nameIdx) ?: "" else ""
                     val number = if (numberIdx >= 0) it.getString(numberIdx) ?: "" else ""
                     if (name.isNotBlank() && number.isNotBlank()) {
-                        results.add(Contact(id = id, name = name, phoneNumber = number))
+                        results.add(Contact(id = id, name = name.trim(), phoneNumber = number.trim()))
                     }
                 }
             }

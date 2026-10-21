@@ -61,27 +61,33 @@ object CommandParser {
 
         // 3. Check for natural language keyword prefixes
         val keywordMatches = listOf(
-            PrefixMapping(listOf("set alarm ", "alarm "), CommandType.ALARM),
-            PrefixMapping(listOf("set timer ", "timer "), CommandType.TIMER),
-            PrefixMapping(listOf("call ", "dial "), CommandType.CALL),
-            PrefixMapping(listOf("whatsapp ", "wa "), CommandType.WHATSAPP),
-            PrefixMapping(listOf("msg ", "sms ", "text ", "message "), CommandType.MESSAGE),
-            PrefixMapping(listOf("note ", "notes ", "keep ", "memo "), CommandType.NOTE),
-            PrefixMapping(listOf("todo ", "task ", "remind ", "reminder "), CommandType.TODO),
-            PrefixMapping(listOf("event ", "cal ", "calendar ", "schedule "), CommandType.EVENT),
-            PrefixMapping(listOf("drive "), CommandType.DRIVE),
-            PrefixMapping(listOf("mail ", "email "), CommandType.EMAIL),
-            PrefixMapping(listOf("ask ", "search ", "google ", "find "), CommandType.ASK)
+            PrefixMapping(listOf("set alarm", "alarm"), CommandType.ALARM, requireSpace = true),
+            PrefixMapping(listOf("set timer", "timer"), CommandType.TIMER, requireSpace = true),
+            PrefixMapping(listOf("call", "dial"), CommandType.CALL, requireSpace = false),
+            PrefixMapping(listOf("whatsapp", "wa"), CommandType.WHATSAPP, requireSpace = false),
+            PrefixMapping(listOf("msg", "sms", "text", "message"), CommandType.MESSAGE, requireSpace = false),
+            PrefixMapping(listOf("notes", "note", "keep", "memo"), CommandType.NOTE, requireSpace = false),
+            PrefixMapping(listOf("todo", "task", "reminder", "remind"), CommandType.TODO, requireSpace = false),
+            PrefixMapping(listOf("event", "cal", "calendar", "schedule"), CommandType.EVENT, requireSpace = true),
+            PrefixMapping(listOf("drive"), CommandType.DRIVE, requireSpace = true),
+            PrefixMapping(listOf("email", "mail"), CommandType.EMAIL, requireSpace = true),
+            PrefixMapping(listOf("ask", "search", "google", "find"), CommandType.ASK, requireSpace = true)
         )
 
         for (mapping in keywordMatches) {
             for (prefix in mapping.prefixes) {
-                if (lower.startsWith(prefix)) {
+                if (lower.startsWith("$prefix ")) {
                     val arg = trimmed.substring(prefix.length).trim()
                     return Command(
                         type = mapping.commandType,
                         rawInput = input,
                         argument = arg
+                    )
+                } else if (!mapping.requireSpace && lower == prefix) {
+                    return Command(
+                        type = mapping.commandType,
+                        rawInput = input,
+                        argument = ""
                     )
                 }
             }
@@ -97,6 +103,7 @@ object CommandParser {
 
     private data class PrefixMapping(
         val prefixes: List<String>,
-        val commandType: CommandType
+        val commandType: CommandType,
+        val requireSpace: Boolean = false
     )
 }

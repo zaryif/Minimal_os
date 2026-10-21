@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import org.json.JSONArray
 import org.json.JSONObject
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "minimal_prefs")
@@ -35,6 +36,7 @@ class UserPreferences(private val context: Context) {
         private val HOME_WIDGETS_LIST = stringPreferencesKey("home_widgets_list")
         private val DECK_WIDGETS_ORDER = stringPreferencesKey("deck_widgets_order")
         private val CUSTOM_COMMANDS_JSON = stringPreferencesKey("custom_commands_json")
+        private val COMMAND_HISTORY = stringPreferencesKey("command_history")
         private val THEME_ID = stringPreferencesKey("theme_id")
         private val HOME_SHOW_ALL_TODOS = booleanPreferencesKey("home_show_all_todos")
         private val HOME_SHOW_ALL_NOTES = booleanPreferencesKey("home_show_all_notes")
@@ -266,6 +268,43 @@ class UserPreferences(private val context: Context) {
             } else {
                 prefs.remove(ASSISTANT_PACKAGE)
             }
+        }
+    }
+
+    val commandHistory: Flow<List<String>> = context.dataStore.data
+        .map { prefs ->
+            val json = prefs[COMMAND_HISTORY]
+            if (json.isNullOrBlank()) {
+                emptyList()
+            } else {
+                try {
+                    val arr = JSONArray(json)
+                    (0 until arr.length()).map { arr.getString(it) }
+                } catch (_: Exception) {
+                    emptyList()
+                }
+            }
+        }
+
+    suspend fun addCommandToHistory(command: String) {
+        val trimmed = command.trim()
+        if (trimmed.isEmpty()) return
+        context.dataStore.edit { prefs ->
+            val current = try {
+                val json = prefs[COMMAND_HISTORY]
+                if (json.isNullOrBlank()) {
+                    mutableListOf<String>()
+                } else {
+                    val arr = JSONArray(json)
+                    (0 until arr.length()).map { arr.getString(it) }.toMutableList()
+                }
+            } catch (_: Exception) {
+                mutableListOf<String>()
+            }
+            current.remove(trimmed)
+            current.add(0, trimmed) // Most recent command first
+            val limited = current.take(30)
+            prefs[COMMAND_HISTORY] = JSONArray(limited).toString()
         }
     }
 }
