@@ -174,7 +174,7 @@ fun WidgetsDeckScreen(
                     when (cardType) {
                         "NOTES" -> {
                             item(key = "NOTES") {
-                                RabbitNotesCard(
+                                DeckNotesCard(
                                     notes = notes.take(4),
                                     newNoteText = newNoteText,
                                     onNewNoteChange = { newNoteText = it },
@@ -191,7 +191,7 @@ fun WidgetsDeckScreen(
 
                         "TODOS" -> {
                             item(key = "TODOS") {
-                                RabbitTodoCard(
+                                DeckTodoCard(
                                     todos = todos.take(4),
                                     newTodoText = newTodoText,
                                     onNewTodoChange = { newTodoText = it },
@@ -209,7 +209,7 @@ fun WidgetsDeckScreen(
 
                         "CALENDAR" -> {
                             item(key = "CALENDAR") {
-                                RabbitCalendarCard(
+                                DeckCalendarCard(
                                     newEventText = newEventText,
                                     onNewEventChange = { newEventText = it },
                                     onAddEvent = {
@@ -233,7 +233,7 @@ fun WidgetsDeckScreen(
 
                         "POMODORO" -> {
                             item(key = "POMODORO") {
-                                RabbitPomodoroCard(
+                                DeckPomodoroCard(
                                     seconds = pomodoroSeconds,
                                     isRunning = isPomodoroRunning,
                                     isBreak = isBreakMode,
@@ -252,7 +252,7 @@ fun WidgetsDeckScreen(
 
                         "TIMERS" -> {
                             item(key = "TIMERS") {
-                                RabbitQuickTimersCard(
+                                DeckQuickTimersCard(
                                     onSetTimer = { seconds, _ ->
                                         executeCommandUseCase.execute("+${seconds}s")
                                     }
@@ -262,7 +262,7 @@ fun WidgetsDeckScreen(
 
                         "SYSTEM_WIDGETS" -> {
                             item(key = "SYSTEM_WIDGETS_HEADER") {
-                                RabbitSystemWidgetsHeader(onAddWidget = onAddSystemWidget)
+                                DeckSystemWidgetsHeader(onAddWidget = onAddSystemWidget)
                             }
 
                             if (systemWidgetIds.isEmpty()) {
@@ -286,7 +286,7 @@ fun WidgetsDeckScreen(
                                 }
                             } else {
                                 items(systemWidgetIds.toList(), key = { "widget_$it" }) { widgetId ->
-                                    RabbitSystemWidgetHostItem(
+                                    DeckSystemWidgetHostItem(
                                         widgetId = widgetId,
                                         appWidgetManager = appWidgetManager,
                                         appWidgetHost = appWidgetHost,
@@ -328,10 +328,10 @@ fun WidgetsDeckScreen(
 }
 
 // -------------------------------------------------------------
-// RABBIT NOTES CARD
+// DECK NOTES CARD
 // -------------------------------------------------------------
 @Composable
-private fun RabbitNotesCard(
+private fun DeckNotesCard(
     notes: List<Note>,
     newNoteText: String,
     onNewNoteChange: (String) -> Unit,
@@ -467,10 +467,10 @@ private fun RabbitNotesCard(
 }
 
 // -------------------------------------------------------------
-// RABBIT TO-DO CARD
+// DECK TO-DO CARD
 // -------------------------------------------------------------
 @Composable
-private fun RabbitTodoCard(
+private fun DeckTodoCard(
     todos: List<Todo>,
     newTodoText: String,
     onNewTodoChange: (String) -> Unit,
@@ -623,10 +623,10 @@ private fun RabbitTodoCard(
 }
 
 // -------------------------------------------------------------
-// RABBIT CALENDAR EVENT CARD (Auto silent create)
+// DECK CALENDAR EVENT CARD (Auto silent create)
 // -------------------------------------------------------------
 @Composable
-private fun RabbitCalendarCard(
+private fun DeckCalendarCard(
     newEventText: String,
     onNewEventChange: (String) -> Unit,
     onAddEvent: () -> Unit,
@@ -730,10 +730,10 @@ private fun RabbitCalendarCard(
 }
 
 // -------------------------------------------------------------
-// RABBIT POMODORO CARD
+// DECK POMODORO CARD
 // -------------------------------------------------------------
 @Composable
-private fun RabbitPomodoroCard(
+private fun DeckPomodoroCard(
     seconds: Int,
     isRunning: Boolean,
     isBreak: Boolean,
@@ -901,10 +901,10 @@ private fun RabbitPomodoroCard(
 }
 
 // -------------------------------------------------------------
-// RABBIT QUICK TIMERS CARD (One-Tap Silent Timers)
+// DECK QUICK TIMERS CARD (One-Tap Silent Timers)
 // -------------------------------------------------------------
 @Composable
-private fun RabbitQuickTimersCard(
+private fun DeckQuickTimersCard(
     onSetTimer: (Int, String) -> Unit
 ) {
     val presets = listOf(
@@ -971,10 +971,10 @@ private fun RabbitQuickTimersCard(
 }
 
 // -------------------------------------------------------------
-// SYSTEM WIDGETS HEADER
+// DECK SYSTEM WIDGETS HEADER
 // -------------------------------------------------------------
 @Composable
-private fun RabbitSystemWidgetsHeader(onAddWidget: () -> Unit) {
+private fun DeckSystemWidgetsHeader(onAddWidget: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1015,10 +1015,10 @@ private fun RabbitSystemWidgetsHeader(onAddWidget: () -> Unit) {
 }
 
 // -------------------------------------------------------------
-// SYSTEM WIDGET HOST ITEM
+// DECK SYSTEM WIDGET HOST ITEM
 // -------------------------------------------------------------
 @Composable
-private fun RabbitSystemWidgetHostItem(
+private fun DeckSystemWidgetHostItem(
     widgetId: Int,
     appWidgetManager: AppWidgetManager,
     appWidgetHost: AppWidgetHost,
@@ -1060,13 +1060,34 @@ private fun RabbitSystemWidgetHostItem(
             AndroidView(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 100.dp, max = 240.dp),
+                    .heightIn(min = 100.dp, max = 300.dp),
                 factory = { ctx ->
                     val info = appWidgetManager.getAppWidgetInfo(widgetId)
                     if (info != null) {
                         try {
-                            appWidgetHost.createView(ctx, widgetId, info).apply {
+                            val hostView = appWidgetHost.createView(ctx, widgetId, info).apply {
                                 setAppWidget(widgetId, info)
+                            }
+                            object : android.widget.FrameLayout(ctx) {
+                                override fun dispatchTouchEvent(ev: android.view.MotionEvent?): Boolean {
+                                    when (ev?.actionMasked) {
+                                        android.view.MotionEvent.ACTION_DOWN,
+                                        android.view.MotionEvent.ACTION_MOVE -> {
+                                            parent?.requestDisallowInterceptTouchEvent(true)
+                                        }
+                                        android.view.MotionEvent.ACTION_UP,
+                                        android.view.MotionEvent.ACTION_CANCEL -> {
+                                            parent?.requestDisallowInterceptTouchEvent(false)
+                                        }
+                                    }
+                                    return super.dispatchTouchEvent(ev)
+                                }
+                            }.apply {
+                                layoutParams = android.view.ViewGroup.LayoutParams(
+                                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                                )
+                                addView(hostView)
                             }
                         } catch (_: Exception) {
                             android.view.View(ctx)

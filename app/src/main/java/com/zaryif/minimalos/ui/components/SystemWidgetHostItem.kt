@@ -77,13 +77,34 @@ fun MinimalSystemWidgetHostItem(
             AndroidView(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 100.dp, max = 240.dp),
+                    .heightIn(min = 100.dp, max = 300.dp),
                 factory = { ctx ->
                     val info = appWidgetManager.getAppWidgetInfo(widgetId)
                     if (info != null) {
                         try {
-                            appWidgetHost.createView(ctx, widgetId, info).apply {
+                            val hostView = appWidgetHost.createView(ctx, widgetId, info).apply {
                                 setAppWidget(widgetId, info)
+                            }
+                            object : android.widget.FrameLayout(ctx) {
+                                override fun dispatchTouchEvent(ev: android.view.MotionEvent?): Boolean {
+                                    when (ev?.actionMasked) {
+                                        android.view.MotionEvent.ACTION_DOWN,
+                                        android.view.MotionEvent.ACTION_MOVE -> {
+                                            parent?.requestDisallowInterceptTouchEvent(true)
+                                        }
+                                        android.view.MotionEvent.ACTION_UP,
+                                        android.view.MotionEvent.ACTION_CANCEL -> {
+                                            parent?.requestDisallowInterceptTouchEvent(false)
+                                        }
+                                    }
+                                    return super.dispatchTouchEvent(ev)
+                                }
+                            }.apply {
+                                layoutParams = android.view.ViewGroup.LayoutParams(
+                                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                                )
+                                addView(hostView)
                             }
                         } catch (_: Exception) {
                             android.view.View(ctx)

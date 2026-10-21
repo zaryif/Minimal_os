@@ -23,8 +23,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ChatBubbleOutline
-import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
@@ -47,6 +48,7 @@ import com.zaryif.minimalos.domain.model.RestrictionMode
 import com.zaryif.minimalos.ui.components.ButtonStyle
 import com.zaryif.minimalos.ui.components.MinimalButton
 import com.zaryif.minimalos.ui.components.MinimalCard
+import com.zaryif.minimalos.ui.theme.AppleSanFranciscoFontFamily
 import com.zaryif.minimalos.ui.theme.MinimalBlack
 import com.zaryif.minimalos.ui.theme.MinimalGray
 import com.zaryif.minimalos.ui.theme.MinimalRed
@@ -78,12 +80,9 @@ fun OnboardingScreen(
         ) { step ->
             when (step) {
                 0 -> StepYourApps(onNext = { currentStep = 1 })
-                1 -> StepMinimalAsk(
-                    onNext = { currentStep = 2 },
-                    onSkip = { currentStep = 2 }
-                )
-                2 -> StepTypeToDoThings(onNext = { currentStep = 3 })
-                3 -> StepHub(onNext = { currentStep = 4 })
+                1 -> StepTypeToDoThings(onNext = { currentStep = 2 })
+                2 -> StepHub(onNext = { currentStep = 3 })
+                3 -> StepDeck(onNext = { currentStep = 4 })
                 4 -> StepRestrictions(
                     selectedMode = selectedMode,
                     onSelectMode = { selectedMode = it },
@@ -95,7 +94,7 @@ fun OnboardingScreen(
 }
 
 // -------------------------------------------------------------
-// STEP 1: Your Apps (Screenshot 1)
+// STEP 1: Your Apps
 // -------------------------------------------------------------
 @Composable
 private fun StepYourApps(onNext: () -> Unit) {
@@ -108,14 +107,16 @@ private fun StepYourApps(onNext: () -> Unit) {
             text = "your apps",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            color = MinimalWhite
+            color = MinimalWhite,
+            fontFamily = AppleSanFranciscoFontFamily
         )
         Spacer(modifier = Modifier.height(10.dp))
         Text(
-            text = "swipe up from anywhere on home for the full list.\nstart typing instead and you get the command bar,\nwhich searches the same apps.",
+            text = "swipe up from anywhere on home for the full list.\nstart typing instead and you get the command bar,\nwhich searches apps with zero lag.",
             fontSize = 13.sp,
             color = MinimalGray,
-            lineHeight = 18.sp
+            lineHeight = 18.sp,
+            fontFamily = AppleSanFranciscoFontFamily
         )
 
         Spacer(modifier = Modifier.height(28.dp))
@@ -127,7 +128,7 @@ private fun StepYourApps(onNext: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(10.dp))
         MinimalCard(
-            title = "Minimal Ask",
+            title = "Minimal Assistant",
             icon = Icons.Default.ChatBubbleOutline,
             iconColor = MinimalRed
         )
@@ -156,67 +157,7 @@ private fun StepYourApps(onNext: () -> Unit) {
 }
 
 // -------------------------------------------------------------
-// STEP 2: Minimal Ask (Screenshot 2)
-// -------------------------------------------------------------
-@Composable
-private fun StepMinimalAsk(
-    onNext: () -> Unit,
-    onSkip: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-    ) {
-        Text(
-            text = "Minimal Ask",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = MinimalWhite
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = "your helper to get things done, without distraction.",
-            fontSize = 13.sp,
-            color = MinimalGray
-        )
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        MinimalCard(
-            title = "ask about your day",
-            subtitle = "what's on, when something is, who someone is"
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        MinimalCard(
-            title = "type ? from home",
-            subtitle = "an answer without opening anything"
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        MinimalCard(
-            title = "it only sees what you allow",
-            subtitle = "every source is a switch you control"
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
-        Spacer(modifier = Modifier.height(24.dp))
-
-        MinimalButton(
-            text = "next",
-            onClick = onNext,
-            style = ButtonStyle.PRIMARY
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        MinimalButton(
-            text = "no thanks",
-            onClick = onSkip,
-            style = ButtonStyle.SECONDARY
-        )
-    }
-}
-
-// -------------------------------------------------------------
-// STEP 3: Type to do things (Screenshot 3)
+// STEP 2: Type to do things
 // -------------------------------------------------------------
 @Composable
 private fun StepTypeToDoThings(onNext: () -> Unit) {
@@ -229,48 +170,55 @@ private fun StepTypeToDoThings(onNext: () -> Unit) {
             text = "type to do things",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            color = MinimalWhite
+            color = MinimalWhite,
+            fontFamily = AppleSanFranciscoFontFamily
         )
         Spacer(modifier = Modifier.height(10.dp))
         Text(
             text = "from home, a symbol and a line is the whole job.\nnothing to open, nowhere to navigate.",
             fontSize = 13.sp,
             color = MinimalGray,
-            lineHeight = 18.sp
+            lineHeight = 18.sp,
+            fontFamily = AppleSanFranciscoFontFamily
         )
 
-        Spacer(modifier = Modifier.height(36.dp))
+        Spacer(modifier = Modifier.height(30.dp))
 
         // 2-Column Symbols Grid
         Row(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                SymbolRow(symbol = "@", name = "message")
-                Spacer(modifier = Modifier.height(20.dp))
-                SymbolRow(symbol = "-", name = "to-do")
-                Spacer(modifier = Modifier.height(20.dp))
-                SymbolRow(symbol = "*", name = "event")
-                Spacer(modifier = Modifier.height(20.dp))
-                SymbolRow(symbol = ":", name = "alarm")
+                SymbolRow(symbol = "@", name = "message (sms)")
+                Spacer(modifier = Modifier.height(18.dp))
+                SymbolRow(symbol = "wa", name = "whatsapp")
+                Spacer(modifier = Modifier.height(18.dp))
+                SymbolRow(symbol = "#", name = "call phone")
+                Spacer(modifier = Modifier.height(18.dp))
+                SymbolRow(symbol = "-", name = "add to-do")
+                Spacer(modifier = Modifier.height(18.dp))
+                SymbolRow(symbol = "!", name = "quick note")
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                SymbolRow(symbol = "#", name = "call")
-                Spacer(modifier = Modifier.height(20.dp))
-                SymbolRow(symbol = "!", name = "note")
-                Spacer(modifier = Modifier.height(20.dp))
-                SymbolRow(symbol = "+", name = "timer")
-                Spacer(modifier = Modifier.height(20.dp))
-                SymbolRow(symbol = "?", name = "ask")
+                SymbolRow(symbol = "*", name = "event")
+                Spacer(modifier = Modifier.height(18.dp))
+                SymbolRow(symbol = ":", name = "alarm (:7am)")
+                Spacer(modifier = Modifier.height(18.dp))
+                SymbolRow(symbol = "+", name = "timer (+15m)")
+                Spacer(modifier = Modifier.height(18.dp))
+                SymbolRow(symbol = "?", name = "ask assistant")
+                Spacer(modifier = Modifier.height(18.dp))
+                SymbolRow(symbol = "app", name = "open app")
             }
         }
 
-        Spacer(modifier = Modifier.height(36.dp))
+        Spacer(modifier = Modifier.height(30.dp))
 
         Text(
-            text = "a line with no symbol searches apps. the symbols\nthemselves are yours to remap in settings.",
+            text = "you can also type naturally: e.g. 'alarm at 7:30 am', 'wa mom: on my way', or configure custom aliases in Settings.",
             fontSize = 12.sp,
             color = MinimalGray,
-            lineHeight = 16.sp
+            lineHeight = 16.sp,
+            fontFamily = AppleSanFranciscoFontFamily
         )
 
         Spacer(modifier = Modifier.weight(1f))
@@ -289,23 +237,25 @@ private fun SymbolRow(symbol: String, name: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = symbol,
-            fontSize = 20.sp,
+            fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             color = MinimalRed,
-            modifier = Modifier.width(24.dp)
+            modifier = Modifier.width(28.dp),
+            fontFamily = AppleSanFranciscoFontFamily
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = name,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = MinimalWhite
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MinimalWhite,
+            fontFamily = AppleSanFranciscoFontFamily
         )
     }
 }
 
 // -------------------------------------------------------------
-// STEP 4: Hub (Screenshot 4)
+// STEP 3: Hub
 // -------------------------------------------------------------
 @Composable
 private fun StepHub(onNext: () -> Unit) {
@@ -321,14 +271,16 @@ private fun StepHub(onNext: () -> Unit) {
             text = "hub",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            color = MinimalWhite
+            color = MinimalWhite,
+            fontFamily = AppleSanFranciscoFontFamily
         )
         Spacer(modifier = Modifier.height(10.dp))
         Text(
             text = "messages, calls, mail and app alerts in one list, so\nthere's one place to look rather than nine.",
             fontSize = 13.sp,
             color = MinimalGray,
-            lineHeight = 18.sp
+            lineHeight = 18.sp,
+            fontFamily = AppleSanFranciscoFontFamily
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -345,6 +297,7 @@ private fun StepHub(onNext: () -> Unit) {
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = if (isSelected) MinimalWhite else MinimalGray,
+                    fontFamily = AppleSanFranciscoFontFamily,
                     modifier = Modifier.clickable { selectedTab = tab }
                 )
             }
@@ -393,7 +346,8 @@ private fun StepHub(onNext: () -> Unit) {
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp,
-                color = MinimalRed
+                color = MinimalRed,
+                fontFamily = AppleSanFranciscoFontFamily
             )
         }
 
@@ -401,7 +355,7 @@ private fun StepHub(onNext: () -> Unit) {
         Spacer(modifier = Modifier.height(24.dp))
 
         MinimalButton(
-            text = "done",
+            text = "next",
             onClick = onNext,
             style = ButtonStyle.PRIMARY
         )
@@ -409,7 +363,91 @@ private fun StepHub(onNext: () -> Unit) {
 }
 
 // -------------------------------------------------------------
-// STEP 5: Restrictions (Screenshot 5)
+// STEP 4: Deck (Widgets Deck)
+// -------------------------------------------------------------
+@Composable
+private fun StepDeck(onNext: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = "your deck",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = MinimalWhite,
+            fontFamily = AppleSanFranciscoFontFamily
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = "an interactive deck for notes, focus tasks,\nlive pomodoro timers, and hosted Android widgets.",
+            fontSize = 13.sp,
+            color = MinimalGray,
+            lineHeight = 18.sp,
+            fontFamily = AppleSanFranciscoFontFamily
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        MinimalCard(
+            title = "quick notes & to-dos",
+            subtitle = "scratchpad with silent storage & completion",
+            icon = Icons.Default.EditNote,
+            iconColor = MinimalRed
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        MinimalCard(
+            title = "pomodoro & quick timers",
+            subtitle = "one-tap focus blocks with live home countdown",
+            icon = Icons.Default.Schedule,
+            iconColor = MinimalRed
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        MinimalCard(
+            title = "native android widgets",
+            subtitle = "host Spotify, Calendar, Weather with smooth scroll",
+            icon = Icons.Default.Dashboard,
+            iconColor = MinimalRed
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = MinimalRed,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "ONE SWIPE LEFT FROM HOME",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp,
+                color = MinimalRed,
+                fontFamily = AppleSanFranciscoFontFamily
+            )
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(24.dp))
+
+        MinimalButton(
+            text = "next",
+            onClick = onNext,
+            style = ButtonStyle.PRIMARY
+        )
+    }
+}
+
+// -------------------------------------------------------------
+// STEP 5: Restrictions
 // -------------------------------------------------------------
 @Composable
 private fun StepRestrictions(
@@ -426,14 +464,16 @@ private fun StepRestrictions(
             text = "restrictions",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            color = MinimalWhite
+            color = MinimalWhite,
+            fontFamily = AppleSanFranciscoFontFamily
         )
         Spacer(modifier = Modifier.height(10.dp))
         Text(
             text = "the phone can hold you to a mode. set one up now,\nor later in settings.",
             fontSize = 13.sp,
             color = MinimalGray,
-            lineHeight = 18.sp
+            lineHeight = 18.sp,
+            fontFamily = AppleSanFranciscoFontFamily
         )
 
         Spacer(modifier = Modifier.height(28.dp))

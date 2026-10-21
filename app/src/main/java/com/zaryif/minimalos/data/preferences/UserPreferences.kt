@@ -203,7 +203,7 @@ class UserPreferences(private val context: Context) {
     }
 
     val themeId: Flow<String> = context.dataStore.data
-        .map { prefs -> prefs[THEME_ID] ?: "AMOLED_RED" }
+        .map { prefs -> prefs[THEME_ID] ?: "RABBIT_ORANGE" }
 
     val homeShowAllTodos: Flow<Boolean> = context.dataStore.data
         .map { prefs -> prefs[HOME_SHOW_ALL_TODOS] ?: false }

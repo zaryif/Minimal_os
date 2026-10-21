@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,16 +48,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.material.icons.filled.Search
 import com.zaryif.minimalos.domain.model.AppInfo
 import com.zaryif.minimalos.domain.model.CommandType
 import com.zaryif.minimalos.domain.model.Contact
 import com.zaryif.minimalos.domain.parser.CommandParser
+import com.zaryif.minimalos.ui.theme.AppleSanFranciscoFontFamily
 import com.zaryif.minimalos.ui.theme.MinimalCardBg
 import com.zaryif.minimalos.ui.theme.MinimalDarkCardBg
 import com.zaryif.minimalos.ui.theme.MinimalDarkGray
 import com.zaryif.minimalos.ui.theme.MinimalGray
 import com.zaryif.minimalos.ui.theme.MinimalRed
 import com.zaryif.minimalos.ui.theme.MinimalWhite
+import com.zaryif.minimalos.ui.theme.SlabInk
+import com.zaryif.minimalos.ui.theme.SlabLime
+import com.zaryif.minimalos.ui.theme.SlabOrange
+import com.zaryif.minimalos.ui.theme.SlabPaper
+import com.zaryif.minimalos.ui.theme.currentActiveTheme
 
 @Composable
 fun CommandBar(
@@ -83,6 +93,35 @@ fun CommandBar(
         onExecute(input)
     }
 
+    val isMinimalStack = currentActiveTheme.id == "MINIMAL_STACK"
+
+    val containerBg by animateColorAsState(
+        targetValue = if (isMinimalStack) {
+            if (query.isNotEmpty()) SlabLime else SlabPaper
+        } else {
+            MinimalCardBg
+        },
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 400f),
+        label = "slab_bg"
+    )
+    val containerBorderColor by animateColorAsState(
+        targetValue = if (isMinimalStack) {
+            if (query.isNotEmpty()) SlabInk else SlabPaper
+        } else {
+            MinimalDarkGray
+        },
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 400f),
+        label = "slab_border"
+    )
+
+    val textColor = if (isMinimalStack) SlabInk else MinimalWhite
+    val placeholderColor = if (isMinimalStack) SlabInk.copy(alpha = 0.6f) else MinimalGray
+    val actionTint = if (isMinimalStack) SlabInk else MinimalRed
+    val iconTint = if (isMinimalStack) SlabInk else MinimalGray
+    val cursorColor = if (isMinimalStack) SlabOrange else MinimalRed
+    val containerShape = RoundedCornerShape(if (isMinimalStack) 22.dp else 16.dp)
+    val containerBorderWidth = if (isMinimalStack) 2.dp else 1.dp
+
     Column(modifier = modifier.fillMaxWidth()) {
         // 1. Contacts auto-complete suggestions if calling/messaging/whatsapp (only when contact is not yet locked with :)
         AnimatedVisibility(
@@ -90,13 +129,18 @@ fun CommandBar(
             enter = fadeIn(),
             exit = fadeOut()
         ) {
+            val popupShape = RoundedCornerShape(if (isMinimalStack) 18.dp else 12.dp)
+            val popupBg = if (isMinimalStack) SlabPaper else MinimalCardBg
+            val popupBorder = if (isMinimalStack) SlabInk else MinimalDarkGray
+            val popupBorderWidth = if (isMinimalStack) 2.dp else 1.dp
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 8.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MinimalCardBg)
-                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
+                    .clip(popupShape)
+                    .background(popupBg)
+                    .border(popupBorderWidth, popupBorder, popupShape)
                     .heightIn(max = 200.dp)
                     .verticalScroll(rememberScrollState())
             ) {
@@ -119,7 +163,7 @@ fun CommandBar(
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = null,
-                            tint = MinimalRed,
+                            tint = if (isMinimalStack) SlabInk else MinimalRed,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
@@ -128,12 +172,14 @@ fun CommandBar(
                                 text = contact.name,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = MinimalWhite
+                                color = if (isMinimalStack) SlabInk else MinimalWhite,
+                                fontFamily = AppleSanFranciscoFontFamily
                             )
                             Text(
                                 text = contact.phoneNumber,
                                 fontSize = 11.sp,
-                                color = MinimalGray
+                                color = if (isMinimalStack) SlabInk.copy(alpha = 0.65f) else MinimalGray,
+                                fontFamily = AppleSanFranciscoFontFamily
                             )
                         }
 
@@ -141,8 +187,8 @@ fun CommandBar(
                         Row(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(MinimalDarkCardBg)
-                                .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
+                                .background(if (isMinimalStack) SlabInk else MinimalDarkCardBg)
+                                .border(1.dp, if (isMinimalStack) SlabInk else MinimalDarkGray, RoundedCornerShape(6.dp))
                                 .clickable { onQueryChange("wa ${contact.name}: ") }
                                 .padding(horizontal = 7.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -150,11 +196,17 @@ fun CommandBar(
                             Icon(
                                 imageVector = Icons.Default.Chat,
                                 contentDescription = "WhatsApp",
-                                tint = MinimalRed,
+                                tint = if (isMinimalStack) SlabLime else MinimalRed,
                                 modifier = Modifier.size(11.dp)
                             )
                             Spacer(modifier = Modifier.width(3.dp))
-                            Text(text = "WA", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MinimalWhite)
+                            Text(
+                                text = "WA",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isMinimalStack) SlabPaper else MinimalWhite,
+                                fontFamily = AppleSanFranciscoFontFamily
+                            )
                         }
 
                         Spacer(modifier = Modifier.width(6.dp))
@@ -163,8 +215,8 @@ fun CommandBar(
                         Row(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(MinimalDarkCardBg)
-                                .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
+                                .background(if (isMinimalStack) SlabInk else MinimalDarkCardBg)
+                                .border(1.dp, if (isMinimalStack) SlabInk else MinimalDarkGray, RoundedCornerShape(6.dp))
                                 .clickable { onQueryChange("@ ${contact.name}: ") }
                                 .padding(horizontal = 7.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -172,25 +224,31 @@ fun CommandBar(
                             Icon(
                                 imageVector = Icons.Default.Email,
                                 contentDescription = "SMS",
-                                tint = MinimalRed,
+                                tint = if (isMinimalStack) SlabLime else MinimalRed,
                                 modifier = Modifier.size(11.dp)
                             )
                             Spacer(modifier = Modifier.width(3.dp))
-                            Text(text = "SMS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MinimalWhite)
+                            Text(
+                                text = "SMS",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isMinimalStack) SlabPaper else MinimalWhite,
+                                fontFamily = AppleSanFranciscoFontFamily
+                            )
                         }
 
                         Spacer(modifier = Modifier.width(6.dp))
 
-                        // Call direct button
+                        // Call direct chip
                         IconButton(
                             onClick = { submitCommand("#${contact.phoneNumber}") },
-                            modifier = Modifier.size(26.dp)
+                            modifier = Modifier.size(28.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Phone,
                                 contentDescription = "Call",
-                                tint = MinimalRed,
-                                modifier = Modifier.size(15.dp)
+                                tint = if (isMinimalStack) SlabInk else MinimalRed,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }
@@ -204,13 +262,18 @@ fun CommandBar(
             enter = fadeIn(),
             exit = fadeOut()
         ) {
+            val popupShape = RoundedCornerShape(if (isMinimalStack) 18.dp else 12.dp)
+            val popupBg = if (isMinimalStack) SlabPaper else MinimalCardBg
+            val popupBorder = if (isMinimalStack) SlabInk else MinimalDarkGray
+            val popupBorderWidth = if (isMinimalStack) 2.dp else 1.dp
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 8.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MinimalCardBg)
-                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
+                    .clip(popupShape)
+                    .background(popupBg)
+                    .border(popupBorderWidth, popupBorder, popupShape)
                     .heightIn(max = 180.dp)
                     .verticalScroll(rememberScrollState())
             ) {
@@ -228,14 +291,15 @@ fun CommandBar(
                         Text(
                             text = app.label,
                             fontSize = 15.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MinimalWhite,
-                            modifier = Modifier.weight(1f)
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isMinimalStack) SlabInk else MinimalWhite,
+                            modifier = Modifier.weight(1f),
+                            fontFamily = AppleSanFranciscoFontFamily
                         )
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = "Open app",
-                            tint = MinimalGray,
+                            tint = if (isMinimalStack) SlabInk else MinimalGray,
                             modifier = Modifier.size(14.dp)
                         )
                     }
@@ -243,20 +307,33 @@ fun CommandBar(
             }
         }
 
-        // 3. Command Bar Input Box
+        // 3. Command Bar Input Box / Slab
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(MinimalCardBg)
-                .border(1.dp, MinimalDarkGray, RoundedCornerShape(16.dp))
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .clip(containerShape)
+                .background(containerBg)
+                .border(containerBorderWidth, containerBorderColor, containerShape)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // If in Minimal Stack theme and no command badge, show the iconic Lumen OS 2 search icon
+                if (isMinimalStack && !hasPrefix && !query.contains(":")) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = SlabInk,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .padding(end = 4.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
+
                 // Command badge if active prefix or keyword detected
                 if (hasPrefix || (query.contains(":") && (command.type == CommandType.MESSAGE || command.type == CommandType.WHATSAPP))) {
                     val badgeText = if (query.contains(":")) {
@@ -268,15 +345,16 @@ fun CommandBar(
 
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(MinimalRed)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isMinimalStack) SlabInk else MinimalRed)
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = badgeText,
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MinimalWhite
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (isMinimalStack) SlabLime else MinimalWhite,
+                            fontFamily = AppleSanFranciscoFontFamily
                         )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
@@ -289,11 +367,12 @@ fun CommandBar(
                 ) {
                     if (query.isEmpty()) {
                         Text(
-                            text = "type to do things or search…",
+                            text = if (isMinimalStack) "search the web or type command…" else "type to do things or search…",
                             style = TextStyle(
                                 fontSize = 15.sp,
-                                color = MinimalGray,
-                                fontWeight = FontWeight.Normal
+                                color = placeholderColor,
+                                fontWeight = if (isMinimalStack) FontWeight.Medium else FontWeight.Normal,
+                                fontFamily = AppleSanFranciscoFontFamily
                             )
                         )
                     }
@@ -304,12 +383,13 @@ fun CommandBar(
                             .fillMaxWidth()
                             .focusRequester(focusRequester),
                         singleLine = true,
-                        cursorBrush = SolidColor(MinimalRed),
+                        cursorBrush = SolidColor(cursorColor),
                         textStyle = TextStyle(
                             fontSize = 15.sp,
-                            color = MinimalWhite,
-                            fontWeight = FontWeight.Normal,
-                            lineHeight = 20.sp
+                            color = textColor,
+                            fontWeight = if (isMinimalStack) FontWeight.SemiBold else FontWeight.Normal,
+                            lineHeight = 20.sp,
+                            fontFamily = AppleSanFranciscoFontFamily
                         ),
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Go
@@ -329,7 +409,7 @@ fun CommandBar(
                         Icon(
                             imageVector = Icons.Default.HelpOutline,
                             contentDescription = "Commands Help",
-                            tint = MinimalGray,
+                            tint = iconTint,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -341,7 +421,7 @@ fun CommandBar(
                         Icon(
                             imageVector = Icons.Default.Clear,
                             contentDescription = "Clear",
-                            tint = MinimalGray,
+                            tint = iconTint,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -353,7 +433,7 @@ fun CommandBar(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = "Execute",
-                            tint = MinimalRed,
+                            tint = actionTint,
                             modifier = Modifier.size(20.dp)
                         )
                     }
