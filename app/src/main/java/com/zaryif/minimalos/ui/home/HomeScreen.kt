@@ -121,6 +121,7 @@ fun HomeScreen(
     val showCommandFeedback by userPreferences.showCommandFeedback.collectAsState(initial = false)
     val assistantPackage by userPreferences.assistantPackage.collectAsState(initial = null)
     val commandHistory by userPreferences.commandHistory.collectAsState(initial = emptyList())
+    val customCommands by userPreferences.customCommands.collectAsState(initial = emptyMap())
 
     val scope = rememberCoroutineScope()
     var notificationMessage by remember { mutableStateOf<String?>(null) }
@@ -555,6 +556,7 @@ fun HomeScreen(
                         }
                     },
                     commandHistory = commandHistory,
+                    customAliases = customCommands.keys,
                     hasContactPermission = hasContactPermission,
                     onRequestContactPermission = {
                         contactPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)

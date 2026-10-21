@@ -80,6 +80,7 @@ fun CommandBar(
     matchingContacts: List<Contact>,
     onContactSelected: (Contact) -> Unit,
     commandHistory: List<String> = emptyList(),
+    customAliases: Set<String> = emptySet(),
     hasContactPermission: Boolean = true,
     onRequestContactPermission: (() -> Unit)? = null,
     onHelpRequested: (() -> Unit)? = null,
@@ -93,18 +94,45 @@ fun CommandBar(
             command.type == CommandType.MESSAGE ||
             command.type == CommandType.WHATSAPP
 
-    // Highlight text with theme accent color when action is triggered (To-Dos and Notes)
-    val isTodoOrNote = command.type == CommandType.TODO || command.type == CommandType.NOTE ||
-            query.trim().lowercase().let {
+    val trimmed = query.trim()
+    val lower = trimmed.lowercase()
+    val firstToken = lower.split(" ").firstOrNull() ?: ""
+
+    // 1. Alias commands: alias, custom, setalias, unalias, rmalias, or user defined aliases
+    val isAliasCommand = trimmed.isNotEmpty() && (
+        firstToken in listOf("alias", "custom", "setalias", "unalias", "rmalias") ||
+        firstToken in customAliases
+    )
+
+    // 2. Built-in actions (TODO, NOTE, CALL, MESSAGE, WHATSAPP, ALARM, TIMER, EVENT, EMAIL, DRIVE, ASK, HELP)
+    val isBuiltInAction = command.type != CommandType.SEARCH || hasPrefix ||
+            lower.let {
                 it == "todo" || it.startsWith("todo ") ||
                 it == "note" || it.startsWith("note ") ||
                 it == "notes" || it.startsWith("notes ") ||
-                it.startsWith("-") || it.startsWith("!") ||
                 it == "task" || it.startsWith("task ") ||
-                it == "memo" || it.startsWith("memo ")
+                it == "memo" || it.startsWith("memo ") ||
+                it == "call" || it.startsWith("call ") ||
+                it == "dial" || it.startsWith("dial ") ||
+                it == "wa" || it.startsWith("wa ") ||
+                it == "whatsapp" || it.startsWith("whatsapp ") ||
+                it == "msg" || it.startsWith("msg ") ||
+                it == "sms" || it.startsWith("sms ") ||
+                it == "text" || it.startsWith("text ") ||
+                it == "message" || it.startsWith("message ") ||
+                it.startsWith("alarm ") || it.startsWith("set alarm ") ||
+                it.startsWith("timer ") || it.startsWith("set timer ") ||
+                it.startsWith("event ") || it.startsWith("cal ") || it.startsWith("calendar ") || it.startsWith("schedule ") ||
+                it.startsWith("email ") || it.startsWith("mail ") ||
+                it.startsWith("drive ") ||
+                it.startsWith("ask ") || it.startsWith("search ") || it.startsWith("google ") || it.startsWith("find ") ||
+                it == "help" || it.startsWith("help ") || it == "commands" || it == "man" || it == "guide"
             }
-    val inputTextColor = if (isTodoOrNote) MinimalRed else MinimalWhite
-    val inputTextWeight = if (isTodoOrNote) FontWeight.SemiBold else FontWeight.Normal
+
+    // Highlight text with theme accent color when ANY action or alias is triggered
+    val isActionTriggered = isBuiltInAction || isAliasCommand
+    val inputTextColor = if (isActionTriggered) MinimalRed else MinimalWhite
+    val inputTextWeight = if (isActionTriggered) FontWeight.SemiBold else FontWeight.Normal
 
     // Terminal command history state
     var historyIndex by remember { mutableIntStateOf(-1) }
@@ -385,17 +413,33 @@ fun CommandBar(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Command badge if active prefix or keyword detected
-                val showCommandBadge = hasPrefix || isTodoOrNote || (query.contains(":") && (command.type == CommandType.MESSAGE || command.type == CommandType.WHATSAPP))
+                // Command badge if active prefix, action keyword, or alias detected
+                val showCommandBadge = hasPrefix || isActionTriggered || (query.contains(":") && (command.type == CommandType.MESSAGE || command.type == CommandType.WHATSAPP))
                 if (showCommandBadge) {
                     val badgeText = when {
                         query.contains(":") -> {
                             val recipient = query.substringBefore(":").replace("whatsapp", "").replace("wa", "").replace("msg", "").replace("@", "").replace("=", "").trim()
                             if (command.type == CommandType.WHATSAPP || query.lowercase().startsWith("wa")) "WA: $recipient" else "SMS: $recipient"
                         }
-                        command.type == CommandType.TODO || query.trim().lowercase().let { it == "todo" || it.startsWith("todo") || it.startsWith("-") || it == "task" || it.startsWith("task") } -> "- TODO"
-                        command.type == CommandType.NOTE || query.trim().lowercase().let { it == "note" || it == "notes" || it.startsWith("note") || it.startsWith("!") || it == "memo" || it.startsWith("memo") } -> "! NOTE"
-                        else -> "${command.type.symbol} ${command.type.displayName}"
+                        isAliasCommand -> {
+                            if (firstToken in listOf("alias", "custom", "setalias")) "ALIAS"
+                            else if (firstToken in listOf("unalias", "rmalias")) "UNALIAS"
+                            else "ALIAS: $firstToken"
+                        }
+                        command.type == CommandType.TODO || lower.let { it == "todo" || it.startsWith("todo ") || it.startsWith("-") || it == "task" || it.startsWith("task ") } -> "- TODO"
+                        command.type == CommandType.NOTE || lower.let { it == "note" || it == "notes" || it.startsWith("note ") || it.startsWith("notes ") || it.startsWith("!") || it == "memo" || it.startsWith("memo ") } -> "! NOTE"
+                        command.type == CommandType.CALL || lower.let { it == "call" || it.startsWith("call ") || it.startsWith("#") || it == "dial" || it.startsWith("dial ") } -> "# CALL"
+                        command.type == CommandType.MESSAGE || lower.let { it == "msg" || it.startsWith("msg ") || it.startsWith("@") || it == "sms" || it.startsWith("sms ") || it == "message" || it.startsWith("message ") || it == "text" || it.startsWith("text ") } -> "@ SMS"
+                        command.type == CommandType.WHATSAPP || lower.let { it == "wa" || it.startsWith("wa ") || it.startsWith("=") || it == "whatsapp" || it.startsWith("whatsapp ") } -> "= WA"
+                        command.type == CommandType.ALARM || lower.let { it.startsWith("alarm ") || it.startsWith("set alarm ") || it.startsWith("+") } -> "+ ALARM"
+                        command.type == CommandType.TIMER || lower.let { it.startsWith("timer ") || it.startsWith("set timer ") || it.startsWith("*") } -> "* TIMER"
+                        command.type == CommandType.EVENT || lower.let { it.startsWith("event ") || it.startsWith("cal ") || it.startsWith("calendar ") || it.startsWith("schedule ") || it.startsWith(":") } -> ": EVENT"
+                        command.type == CommandType.EMAIL || lower.let { it.startsWith("email ") || it.startsWith("mail ") || it.startsWith("^") } -> "^ EMAIL"
+                        command.type == CommandType.DRIVE || lower.let { it.startsWith("drive ") || it.startsWith("&") } -> "& DRIVE"
+                        command.type == CommandType.ASK || lower.let { it.startsWith("ask ") || it.startsWith("search ") || it.startsWith("google ") || it.startsWith("find ") || it.startsWith("?") } -> "? ASK"
+                        command.type == CommandType.HELP || lower.let { it == "help" || it.startsWith("help ") || it == "commands" || it == "man" || it == "guide" } -> "HELP"
+                        command.type != CommandType.SEARCH -> "${command.type.symbol} ${command.type.displayName}"
+                        else -> "ACTION"
                     }
 
                     Box(
