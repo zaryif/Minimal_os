@@ -307,4 +307,10 @@ class UserPreferences(private val context: Context) {
             prefs[COMMAND_HISTORY] = JSONArray(limited).toString()
         }
     }
+
+    suspend fun clearCommandHistory() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(COMMAND_HISTORY)
+        }
+    }
 }

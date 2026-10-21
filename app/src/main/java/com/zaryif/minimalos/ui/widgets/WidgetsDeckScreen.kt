@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Launch
+import com.zaryif.minimalos.ui.components.MinimalAlarmTimePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -968,8 +969,29 @@ private fun RabbitAlarmWidgetCard(
 ) {
     var newAlarmText by remember { mutableStateOf("") }
     var statusFeedback by remember { mutableStateOf<String?>(null) }
+    var showTimePickerDialog by remember { mutableStateOf(false) }
+    var selectedTimeDisplay by remember { mutableStateOf("7:00 AM") }
+    var selectedDayDisplay by remember { mutableStateOf("Tomorrow") }
 
-    val presetAlarms = listOf("6:00 AM", "7:00 AM", "8:00 AM", "9:00 AM", "+30m", "+1h")
+    if (showTimePickerDialog) {
+        MinimalAlarmTimePickerDialog(
+            initialHour = 7,
+            initialMinute = 0,
+            initialAmPm = "AM",
+            onDismiss = { showTimePickerDialog = false },
+            onConfirm = { hour, minute, amPm, dayLabel ->
+                showTimePickerDialog = false
+                val formattedTime = "%d:%02d %s".format(hour, minute, amPm)
+                selectedTimeDisplay = formattedTime
+                selectedDayDisplay = dayLabel
+                val commandQuery = "$formattedTime $dayLabel"
+                onSetAlarm(commandQuery)
+                statusFeedback = "Alarm set for $formattedTime ($dayLabel)"
+            }
+        )
+    }
+
+    val relativeQuickAlarms = listOf("+15m", "+30m", "+1h", "+8h")
 
     Box(
         modifier = Modifier
@@ -1024,12 +1046,62 @@ private fun RabbitAlarmWidgetCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Quick preset chips
+            // Custom Alarm Setup Hero Card (Hour, Minute, AM/PM, Day)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MinimalDarkCardBg)
+                    .border(1.dp, MinimalRed.copy(alpha = 0.6f), RoundedCornerShape(10.dp))
+                    .clickable { showTimePickerDialog = true }
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "CUSTOM TIME & SCHEDULE",
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            color = MinimalRed,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "$selectedTimeDisplay • $selectedDayDisplay",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MinimalWhite
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(MinimalRed)
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "SET TIME ⏰",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MinimalOnAccent
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Quick relative alarm chips
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                presetAlarms.forEach { preset ->
+                relativeQuickAlarms.forEach { preset ->
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -1037,16 +1109,18 @@ private fun RabbitAlarmWidgetCard(
                             .background(MinimalDarkCardBg)
                             .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
                             .clickable {
-                                val targetTime = if (preset == "+30m" || preset == "+1h") {
-                                    val cal = Calendar.getInstance()
-                                    if (preset == "+30m") cal.add(Calendar.MINUTE, 30)
-                                    else cal.add(Calendar.HOUR_OF_DAY, 1)
-                                    val sdf = SimpleDateFormat("h:mm a", Locale.US)
-                                    sdf.format(cal.time)
-                                } else {
-                                    preset
+                                val cal = Calendar.getInstance()
+                                when (preset) {
+                                    "+15m" -> cal.add(Calendar.MINUTE, 15)
+                                    "+30m" -> cal.add(Calendar.MINUTE, 30)
+                                    "+1h" -> cal.add(Calendar.HOUR_OF_DAY, 1)
+                                    "+8h" -> cal.add(Calendar.HOUR_OF_DAY, 8)
                                 }
+                                val sdf = SimpleDateFormat("h:mm a", Locale.US)
+                                val targetTime = sdf.format(cal.time)
                                 onSetAlarm(targetTime)
+                                selectedTimeDisplay = targetTime
+                                selectedDayDisplay = "Today"
                                 statusFeedback = "Alarm set for $targetTime"
                             }
                             .padding(vertical = 8.dp),

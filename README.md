@@ -82,8 +82,10 @@ Type symbol + text  ➔  Instant execution
 | _(text)_ | **Fuzzy App Search** | `spot` | Real-time app search with instant keyboard launch |
 
 #### 🚀 Terminal Power Features:
-- **Inline Syntax Highlighting**: As soon as you type an action trigger or alias (such as `todo`, `notes`, `yt`, `-`, `!`, or `#`), only the trigger word/symbol lights up in the bold theme accent color, while all arguments and text remain crisp white with zero duplicate badges.
-- **Terminal Command History**: Press the `▲` (Up) and `▼` (Down) history controls right beside the input bar to recall and cycle through your previous commands, exactly like a Linux/macOS shell.
+- **Chatbox Command History Stream**: When typing, the upper screen area transforms into an interactive, scrollable chat stream (resembling ChatGPT/Gemini) displaying past commands as numbered squared cards (`[1]`, `[2]`, `[3]...`). Tap any card to reload it into the command bar ready to edit or run.
+- **Dynamic Multiline Auto-Expansion**: The command bar automatically expands from 1 line up to 3 lines when typing lengthy notes, tasks, or search queries, eliminating horizontal truncation.
+- **Terminal Up/Down Cycling Arrows**: Tactile `▲` (Up) and `▼` (Down) scroll buttons remain permanently anchored beside the input bar to step through terminal history anytime with live badge tracking (`HIST 1/10`).
+- **Inline Syntax Highlighting**: Only the action trigger or alias (such as `todo`, `notes`, `yt`, `-`, `!`, or `#`) lights up in bold theme accent color, while parameters and payload text stay clean, crisp white.
 - **Smart Contact Search**: Search your address book with fuzzy matching and inline permission grant fallbacks.
 
 ---
@@ -93,7 +95,7 @@ Type symbol + text  ➔  Instant execution
 Swipe or tap into the **Widgets Deck** to access purpose-built, high-contrast utility cards inspired by retro-futuristic hardware:
 
 - ⏱️ **Live Pomodoro Focus Card**: Built-in 15m, 25m, 45m, and 60m focus chips, custom duration picker dialog, work/break cycle tracker, and tactile play/pause/reset controls.
-- ⏰ **Integrated Alarms Widget**: One-tap quick presets (`+30m`, `+1h`, `7:00 AM`, `8:00 AM`) plus an inline natural-language text field to set system alarms without ever opening the Clock app.
+- ⏰ **Custom Alarms & Scheduler Widget**: Tactile custom time-picker dialog with full Hour (1–12), Minute (00–59), AM/PM toggles, and Day selection chips (Today, Tomorrow, Daily, Weekdays) plus relative quick presets (`+15m`, `+30m`, `+1h`, `+8h`).
 - ⚡ **Aliases & Shortcuts Deck**: Quick template creator and 1-tap launcher for your custom shortcuts (e.g. `yt` ➔ YouTube, `wifi` ➔ Network Settings, `gh` ➔ GitHub).
 - 📝 **Minimal To-Dos & Notes Deck**: Interactive checkboxes to complete tasks on the fly, quick inline note creation, and clean strikethrough state management.
 - ⏲️ **Countdown Timers**: Quick-tap timer presets (`1m`, `5m`, `10m`, `15m`, `25m`) that trigger native Android alarms.

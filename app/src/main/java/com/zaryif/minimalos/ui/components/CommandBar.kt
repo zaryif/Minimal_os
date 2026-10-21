@@ -36,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -203,6 +204,14 @@ fun CommandBar(
     // Terminal command history state
     var historyIndex by remember { mutableIntStateOf(-1) }
     var tempQueryBeforeHistory by remember { mutableStateOf("") }
+
+    LaunchedEffect(query, commandHistory) {
+        val trimmedQ = query.trim()
+        val found = commandHistory.indexOfFirst { it.equals(trimmedQ, ignoreCase = true) }
+        if (found != -1) {
+            historyIndex = found
+        }
+    }
 
     fun navigateHistory(up: Boolean) {
         if (commandHistory.isEmpty()) return
@@ -501,7 +510,9 @@ fun CommandBar(
 
                 // Text field with action syntax highlighting and keyboard terminal arrow intercept
                 Box(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 24.dp, max = 80.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
                     if (query.isEmpty()) {
@@ -540,7 +551,8 @@ fun CommandBar(
                                     false
                                 }
                             },
-                        singleLine = true,
+                        singleLine = false,
+                        maxLines = 3,
                         cursorBrush = SolidColor(MinimalRed),
                         textStyle = TextStyle(
                             fontSize = 15.sp,

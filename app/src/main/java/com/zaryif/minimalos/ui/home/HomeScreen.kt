@@ -72,6 +72,7 @@ import com.zaryif.minimalos.domain.usecase.CommandResult
 import com.zaryif.minimalos.domain.usecase.ExecuteCommandUseCase
 import com.zaryif.minimalos.ui.components.CommandBar
 import com.zaryif.minimalos.ui.components.CommandHelpDialog
+import com.zaryif.minimalos.ui.components.CommandHistoryChatStream
 import com.zaryif.minimalos.ui.components.MinimalDynamicHomeWidgets
 import com.zaryif.minimalos.ui.components.MinimalLiveTimerCard
 import com.zaryif.minimalos.ui.components.MinimalNotificationBanner
@@ -453,7 +454,21 @@ fun HomeScreen(
                     }
                 }
             } else {
-                Spacer(modifier = Modifier.weight(1f))
+                CommandHistoryChatStream(
+                    history = commandHistory,
+                    currentQuery = query,
+                    onSelectCommand = { selected ->
+                        query = selected
+                    },
+                    onClearHistory = {
+                        scope.launch {
+                            userPreferences.clearCommandHistory()
+                        }
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                )
             }
 
             // 3. Bottom Area: Gesture hints (only when idle) + CommandBar (ALWAYS VISIBLE ABOVE KEYBOARD)
