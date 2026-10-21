@@ -304,16 +304,10 @@ fun HomeScreen(
                     detectDragGestures { _, dragAmount ->
                         val (x, y) = dragAmount
                         if (!isTyping) {
-                            // Swipe up -> Apps
-                            if (y < -30 && kotlin.math.abs(y) > kotlin.math.abs(x)) {
-                                onNavigateToApps()
-                            }
-                            // Swipe right -> Hub
-                            if (x > 30 && kotlin.math.abs(x) > kotlin.math.abs(y)) {
+                            // Clear horizontal swipes for Hub / Widgets Deck
+                            if (x > 50 && kotlin.math.abs(x) > kotlin.math.abs(y) * 1.5f) {
                                 onNavigateToHub()
-                            }
-                            // Swipe left -> Widgets Deck
-                            if (x < -30 && kotlin.math.abs(x) > kotlin.math.abs(y)) {
+                            } else if (x < -50 && kotlin.math.abs(x) > kotlin.math.abs(y) * 1.5f) {
                                 onNavigateToWidgets()
                             }
                         }
@@ -465,31 +459,55 @@ fun HomeScreen(
             }
 
             // 3. Bottom Area: Gesture hints (only when idle) + CommandBar (ALWAYS VISIBLE ABOVE KEYBOARD)
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectDragGestures { _, dragAmount ->
+                            val (x, y) = dragAmount
+                            if (!isTyping && y < -30 && kotlin.math.abs(y) > kotlin.math.abs(x)) {
+                                onNavigateToApps()
+                            }
+                        }
+                    }
+            ) {
                 if (!isTyping) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "➔ hub",
                             fontSize = 11.sp,
                             color = MinimalDarkGray,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .clickable { onNavigateToHub() }
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                         Text(
                             text = "↑ apps",
                             fontSize = 11.sp,
                             color = MinimalDarkGray,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .clickable { onNavigateToApps() }
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                         Text(
                             text = "widgets ➔",
                             fontSize = 11.sp,
                             color = MinimalDarkGray,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .clickable { onNavigateToWidgets() }
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
                 }

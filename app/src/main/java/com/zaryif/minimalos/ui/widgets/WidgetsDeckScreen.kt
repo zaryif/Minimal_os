@@ -1024,58 +1024,10 @@ private fun RabbitSystemWidgetHostItem(
     appWidgetHost: AppWidgetHost,
     onDelete: () -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(MinimalCardBg)
-            .border(1.dp, MinimalDarkGray, RoundedCornerShape(14.dp))
-            .padding(10.dp)
-    ) {
-        Column {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val info = remember(widgetId) { appWidgetManager.getAppWidgetInfo(widgetId) }
-                Text(
-                    text = info?.label ?: "App Widget",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MinimalGray
-                )
-                IconButton(onClick = onDelete, modifier = Modifier.size(22.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Remove Widget",
-                        tint = MinimalGray,
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            AndroidView(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 100.dp, max = 240.dp),
-                factory = { ctx ->
-                    val info = appWidgetManager.getAppWidgetInfo(widgetId)
-                    if (info != null) {
-                        try {
-                            appWidgetHost.createView(ctx, widgetId, info).apply {
-                                setAppWidget(widgetId, info)
-                            }
-                        } catch (_: Exception) {
-                            android.view.View(ctx)
-                        }
-                    } else {
-                        android.view.View(ctx)
-                    }
-                }
-            )
-        }
-    }
+    com.zaryif.minimalos.ui.components.MinimalSystemWidgetHostItem(
+        widgetId = widgetId,
+        appWidgetManager = appWidgetManager,
+        appWidgetHost = appWidgetHost,
+        onDelete = onDelete
+    )
 }

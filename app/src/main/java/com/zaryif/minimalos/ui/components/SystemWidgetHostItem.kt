@@ -77,13 +77,26 @@ fun MinimalSystemWidgetHostItem(
             AndroidView(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 100.dp, max = 240.dp),
+                    .heightIn(min = 100.dp, max = 280.dp),
                 factory = { ctx ->
                     val info = appWidgetManager.getAppWidgetInfo(widgetId)
                     if (info != null) {
                         try {
                             appWidgetHost.createView(ctx, widgetId, info).apply {
                                 setAppWidget(widgetId, info)
+                                setOnTouchListener { v, event ->
+                                    when (event.actionMasked) {
+                                        android.view.MotionEvent.ACTION_DOWN,
+                                        android.view.MotionEvent.ACTION_MOVE -> {
+                                            v.parent?.requestDisallowInterceptTouchEvent(true)
+                                        }
+                                        android.view.MotionEvent.ACTION_UP,
+                                        android.view.MotionEvent.ACTION_CANCEL -> {
+                                            v.parent?.requestDisallowInterceptTouchEvent(false)
+                                        }
+                                    }
+                                    false
+                                }
                             }
                         } catch (_: Exception) {
                             android.view.View(ctx)

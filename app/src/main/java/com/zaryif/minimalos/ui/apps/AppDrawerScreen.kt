@@ -18,6 +18,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
@@ -62,6 +66,11 @@ fun AppDrawerScreen(
             val q = searchQuery.lowercase()
             apps.filter { it.label.lowercase().contains(q) }
         }
+    }
+
+    // Handle back button to clear search before exiting
+    BackHandler(enabled = searchQuery.isNotEmpty()) {
+        searchQuery = ""
     }
 
     Box(
@@ -110,6 +119,16 @@ fun AppDrawerScreen(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         cursorBrush = SolidColor(MinimalRed),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(
+                            onSearch = {
+                                if (filteredApps.isNotEmpty()) {
+                                    val topApp = filteredApps.first()
+                                    val launchIntent = context.packageManager.getLaunchIntentForPackage(topApp.packageName)
+                                    launchIntent?.let { context.startActivity(it) }
+                                }
+                            }
+                        ),
                         textStyle = TextStyle(
                             fontSize = 15.sp,
                             color = MinimalWhite,

@@ -6,6 +6,11 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +18,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,12 +39,31 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.ViewAgenda
+import androidx.compose.material.icons.filled.Wallpaper
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -56,6 +82,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -79,7 +106,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     installedApps: List<AppInfo>,
@@ -88,6 +115,8 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    // Preferences collection
     val selectedAiProvider by userPreferences.aiProvider.collectAsState(initial = AiProvider.GEMINI)
     val assistantPackage by userPreferences.assistantPackage.collectAsState(initial = null)
     val showCommandFeedback by userPreferences.showCommandFeedback.collectAsState(initial = true)
@@ -100,10 +129,20 @@ fun SettingsScreen(
     val showAllTodosPref by userPreferences.homeShowAllTodos.collectAsState(initial = false)
     val showAllNotesPref by userPreferences.homeShowAllNotes.collectAsState(initial = false)
 
+    // UI state
+    var searchQuery by remember { mutableStateOf("") }
     var showAppPickerModal by remember { mutableStateOf(false) }
     var showAddCommandModal by remember { mutableStateOf(false) }
 
-    // Photo Gallery Wallpaper Picker with persistent local storage copying
+    // Section expansion toggles (top-brand accordion style)
+    var isThemeExpanded by remember { mutableStateOf(false) }
+    var isWallpaperExpanded by remember { mutableStateOf(false) }
+    var isHomeWidgetsExpanded by remember { mutableStateOf(false) }
+    var isDeckWidgetsExpanded by remember { mutableStateOf(false) }
+    var isAssistantExpanded by remember { mutableStateOf(false) }
+    var isAliasesExpanded by remember { mutableStateOf(false) }
+
+    // Photo Gallery Wallpaper Picker
     val wallpaperPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -124,20 +163,74 @@ fun SettingsScreen(
         }
     }
 
+    val favoriteAppsList = remember(favoriteAppPackages, installedApps) {
+        installedApps.filter { it.packageName in favoriteAppPackages }
+    }
+
+    val activeTheme = remember(currentThemeId) {
+        MinimalThemeRegistry.getTheme(currentThemeId)
+    }
+
+    // Dynamic Assistant discovery
+    val availableAssistants = remember(context) {
+        val pm = context.packageManager
+        val list = mutableListOf<Triple<String, String, String>>()
+        list.add(Triple("SYSTEM_DEFAULT", "System Default Assistant", "OS DEFAULT"))
+        val addedPackages = mutableSetOf<String>()
+
+        try {
+            val assistIntent = Intent(Intent.ACTION_ASSIST)
+            val resolutions = pm.queryIntentActivities(assistIntent, 0)
+            for (res in resolutions) {
+                val pkg = res.activityInfo.packageName
+                if (pkg != context.packageName && !addedPackages.contains(pkg)) {
+                    val label = res.loadLabel(pm).toString()
+                    addedPackages.add(pkg)
+                    list.add(Triple(pkg, label, "ALLOWED ASSIST"))
+                }
+            }
+        } catch (_: Exception) {}
+
+        val knownAi = listOf(
+            "com.google.android.apps.bard" to "Google Gemini",
+            "com.google.android.googlequicksearchbox" to "Google Assistant",
+            "com.openai.chatgpt" to "ChatGPT",
+            "com.microsoft.copilot" to "Microsoft Copilot",
+            "com.anthropic.claude" to "Claude",
+            "ai.perplexity.app" to "Perplexity"
+        )
+
+        for ((pkg, name) in knownAi) {
+            if (!addedPackages.contains(pkg)) {
+                try {
+                    val appInfo = pm.getApplicationInfo(pkg, 0)
+                    if (appInfo.enabled) {
+                        val label = pm.getApplicationLabel(appInfo).toString().ifBlank { name }
+                        addedPackages.add(pkg)
+                        list.add(Triple(pkg, label, "INSTALLED AI"))
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+        list
+    }
+
+    val q = searchQuery.trim().lowercase()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MinimalBlack)
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(horizontal = 22.dp, vertical = 14.dp)
+            .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            // Header
+            // TOP BAR
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -151,930 +244,1050 @@ fun SettingsScreen(
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "settings",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MinimalWhite
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // SECTION 1: THEMES & ACCENTS
-            Text(
-                text = "THEMES & ACCENTS",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = MinimalRed,
-                letterSpacing = 1.sp
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                MinimalThemeRegistry.THEMES.forEach { theme ->
-                    val isSelected = theme.id == currentThemeId
-                    Box(
-                        modifier = Modifier
-                            .width(135.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(theme.card)
-                            .border(
-                                width = if (isSelected) 2.dp else 1.dp,
-                                color = if (isSelected) theme.accent else theme.border,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            .clickable {
-                                scope.launch { userPreferences.setThemeId(theme.id) }
-                            }
-                            .padding(12.dp)
-                    ) {
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .clip(CircleShape)
-                                        .background(theme.accent)
-                                )
-                                if (isSelected) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = null,
-                                        tint = theme.accent,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = theme.name,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = theme.textPrimary
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // SECTION 2: CUSTOM COMMANDS & ALIASES
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "CUSTOM COMMANDS & ALIASES",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MinimalRed,
-                    letterSpacing = 1.sp
-                )
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(MinimalRed)
-                        .clickable { showAddCommandModal = true }
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
+                Column {
                     Text(
-                        text = "+ ADD ALIAS",
-                        fontSize = 10.sp,
+                        text = "settings",
+                        fontSize = 26.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MinimalWhite
+                        color = MinimalWhite,
+                        letterSpacing = (-0.5).sp
                     )
-                }
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-
-            if (customCommands.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MinimalCardBg)
-                        .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
-                        .clickable { showAddCommandModal = true }
-                        .padding(14.dp)
-                ) {
                     Text(
-                        text = "No custom commands yet. Tap '+ ADD ALIAS' to create shortcuts like 'yt' ➔ YouTube or 'wifi' ➔ Settings.",
-                        fontSize = 12.sp,
-                        color = MinimalGray,
-                        lineHeight = 18.sp
-                    )
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MinimalCardBg)
-                        .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 14.dp, vertical = 6.dp)
-                ) {
-                    customCommands.forEach { (keyword, target) ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = keyword,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MinimalRed,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                                Text(
-                                    text = "➔ $target",
-                                    fontSize = 11.sp,
-                                    color = MinimalGray,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                            IconButton(
-                                onClick = { scope.launch { userPreferences.removeCustomCommand(keyword) } },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.DeleteOutline,
-                                    contentDescription = "Delete",
-                                    tint = MinimalGray,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // SECTION 3: HOME SCREEN WIDGETS CUSTOMIZATION
-            Text(
-                text = "HOME SCREEN WIDGETS & ORDER",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = MinimalRed,
-                letterSpacing = 1.sp
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Display preference toggles
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MinimalCardBg)
-                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(10.dp))
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "show all to-dos on home", fontSize = 13.sp, color = MinimalWhite)
-                    Text(text = "display complete task list instead of top 2", fontSize = 11.sp, color = MinimalGray)
-                }
-                Switch(
-                    checked = showAllTodosPref,
-                    onCheckedChange = { scope.launch { userPreferences.setHomeShowAllTodos(it) } },
-                    colors = SwitchDefaults.colors(checkedThumbColor = MinimalWhite, checkedTrackColor = MinimalRed)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MinimalCardBg)
-                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(10.dp))
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "show all notes on home", fontSize = 13.sp, color = MinimalWhite)
-                    Text(text = "display all memo entries instead of recent 2", fontSize = 11.sp, color = MinimalGray)
-                }
-                Switch(
-                    checked = showAllNotesPref,
-                    onCheckedChange = { scope.launch { userPreferences.setHomeShowAllNotes(it) } },
-                    colors = SwitchDefaults.colors(checkedThumbColor = MinimalWhite, checkedTrackColor = MinimalRed)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Available Home Widgets
-            val allHomeWidgetOptions = listOf(
-                Pair("TODOS", "to-dos (active focus tasks)"),
-                Pair("NOTES", "notes (recent memos)"),
-                Pair("CALENDAR", "calendar (glance & schedule)"),
-                Pair("SHORTCUTS", "shortcuts (favorite pinned apps)"),
-                Pair("SYSTEM_WIDGETS", "widgets (native Android app widgets)")
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MinimalCardBg)
-                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                homeWidgets.forEachIndexed { index, widgetKey ->
-                    val label = allHomeWidgetOptions.find { it.first == widgetKey }?.second ?: widgetKey
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MinimalDarkCardBg)
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = label,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MinimalWhite,
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (index > 0) {
-                                IconButton(
-                                    onClick = {
-                                        val mutable = homeWidgets.toMutableList()
-                                        val temp = mutable[index]
-                                        mutable[index] = mutable[index - 1]
-                                        mutable[index - 1] = temp
-                                        scope.launch { userPreferences.setHomeWidgets(mutable) }
-                                    },
-                                    modifier = Modifier.size(28.dp)
-                                ) {
-                                    Icon(imageVector = Icons.Default.ArrowUpward, contentDescription = "Move Up", tint = MinimalRed, modifier = Modifier.size(16.dp))
-                                }
-                            }
-                            if (index < homeWidgets.size - 1) {
-                                IconButton(
-                                    onClick = {
-                                        val mutable = homeWidgets.toMutableList()
-                                        val temp = mutable[index]
-                                        mutable[index] = mutable[index + 1]
-                                        mutable[index + 1] = temp
-                                        scope.launch { userPreferences.setHomeWidgets(mutable) }
-                                    },
-                                    modifier = Modifier.size(28.dp)
-                                ) {
-                                    Icon(imageVector = Icons.Default.ArrowDownward, contentDescription = "Move Down", tint = MinimalRed, modifier = Modifier.size(16.dp))
-                                }
-                            }
-                            IconButton(
-                                onClick = {
-                                    val updated = homeWidgets - widgetKey
-                                    scope.launch { userPreferences.setHomeWidgets(updated) }
-                                },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(imageVector = Icons.Default.Close, contentDescription = "Remove", tint = MinimalGray, modifier = Modifier.size(16.dp))
-                            }
-                        }
-                    }
-                }
-
-                // Add disabled widgets button
-                val unadded = allHomeWidgetOptions.filter { it.first !in homeWidgets }
-                if (unadded.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        unadded.forEach { (key, name) ->
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(MinimalDarkCardBg)
-                                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
-                                    .clickable {
-                                        scope.launch { userPreferences.setHomeWidgets(homeWidgets + key) }
-                                    }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "+ ${name.split(" ").first()}",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MinimalRed
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // SECTION 4: WIDGETS DECK REORDER & CUSTOMIZATION
-            Text(
-                text = "WIDGETS DECK REORDER & CARDS",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = MinimalRed,
-                letterSpacing = 1.sp
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-
-            val allDeckWidgetOptions = listOf(
-                Pair("NOTES", "notes card"),
-                Pair("TODOS", "to-dos card"),
-                Pair("CALENDAR", "schedule & events card"),
-                Pair("POMODORO", "pomodoro focus card"),
-                Pair("TIMERS", "quick timers card"),
-                Pair("SYSTEM_WIDGETS", "system app widgets")
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MinimalCardBg)
-                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                deckWidgetsOrder.forEachIndexed { index, deckKey ->
-                    val label = allDeckWidgetOptions.find { it.first == deckKey }?.second ?: deckKey
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MinimalDarkCardBg)
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = label,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MinimalWhite,
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (index > 0) {
-                                IconButton(
-                                    onClick = {
-                                        val mutable = deckWidgetsOrder.toMutableList()
-                                        val temp = mutable[index]
-                                        mutable[index] = mutable[index - 1]
-                                        mutable[index - 1] = temp
-                                        scope.launch { userPreferences.setDeckWidgetsOrder(mutable) }
-                                    },
-                                    modifier = Modifier.size(28.dp)
-                                ) {
-                                    Icon(imageVector = Icons.Default.ArrowUpward, contentDescription = "Move Up", tint = MinimalRed, modifier = Modifier.size(16.dp))
-                                }
-                            }
-                            if (index < deckWidgetsOrder.size - 1) {
-                                IconButton(
-                                    onClick = {
-                                        val mutable = deckWidgetsOrder.toMutableList()
-                                        val temp = mutable[index]
-                                        mutable[index] = mutable[index + 1]
-                                        mutable[index + 1] = temp
-                                        scope.launch { userPreferences.setDeckWidgetsOrder(mutable) }
-                                    },
-                                    modifier = Modifier.size(28.dp)
-                                ) {
-                                    Icon(imageVector = Icons.Default.ArrowDownward, contentDescription = "Move Down", tint = MinimalRed, modifier = Modifier.size(16.dp))
-                                }
-                            }
-                            IconButton(
-                                onClick = {
-                                    val updated = deckWidgetsOrder - deckKey
-                                    scope.launch { userPreferences.setDeckWidgetsOrder(updated) }
-                                },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(imageVector = Icons.Default.Close, contentDescription = "Remove", tint = MinimalGray, modifier = Modifier.size(16.dp))
-                            }
-                        }
-                    }
-                }
-
-                // Add disabled deck widgets
-                val unaddedDeck = allDeckWidgetOptions.filter { it.first !in deckWidgetsOrder }
-                if (unaddedDeck.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        unaddedDeck.forEach { (key, name) ->
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(MinimalDarkCardBg)
-                                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
-                                    .clickable {
-                                        scope.launch { userPreferences.setDeckWidgetsOrder(deckWidgetsOrder + key) }
-                                    }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "+ ${name.split(" ").first()}",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MinimalRed
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // SECTION 5: HOME SCREEN APP SHORTCUTS
-            Text(
-                text = "HOME SCREEN APP SHORTCUTS",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = MinimalRed,
-                letterSpacing = 1.sp
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-
-            val favoriteAppsList = remember(favoriteAppPackages, installedApps) {
-                installedApps.filter { it.packageName in favoriteAppPackages }
-            }
-
-            if (favoriteAppsList.isEmpty()) {
-                Text(
-                    text = "No shortcuts pinned to Home. Tap below to choose apps.",
-                    fontSize = 13.sp,
-                    color = MinimalGray
-                )
-            } else {
-                androidx.compose.foundation.layout.FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    favoriteAppsList.forEach { app ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MinimalDarkCardBg)
-                                .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Text(
-                                text = app.label,
-                                fontSize = 12.sp,
-                                color = MinimalWhite
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MinimalRed)
-                    .clickable { showAppPickerModal = true }
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
-            ) {
-                Text(
-                    text = if (favoriteAppsList.isEmpty()) "+ CHOOSE HOME SHORTCUTS" else "EDIT HOME SHORTCUTS",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MinimalWhite
-                )
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // SECTION 6: DEFAULT ASSISTANT (Available & Allowed Apps)
-            Text(
-                text = "DEFAULT ASSISTANT",
-                fontFamily = AppleSanFranciscoFontFamily,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = MinimalRed,
-                letterSpacing = 1.sp
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Choose which available and allowed digital assistant handles assistant commands and quick triggers.",
-                fontFamily = AppleSanFranciscoFontFamily,
-                fontSize = 12.sp,
-                color = MinimalGray,
-                lineHeight = 16.sp
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Dynamically discover available & allowed assistants
-            val availableAssistants = remember(context) {
-                val pm = context.packageManager
-                val list = mutableListOf<Triple<String, String, String>>() // id, name, tag
-
-                // 1. System Default
-                list.add(Triple("SYSTEM_DEFAULT", "System Default Assistant", "OS DEFAULT"))
-
-                val addedPackages = mutableSetOf<String>()
-
-                // 2. Apps explicitly registered with Android for ACTION_ASSIST
-                try {
-                    val assistIntent = Intent(Intent.ACTION_ASSIST)
-                    val resolutions = pm.queryIntentActivities(assistIntent, 0)
-                    for (res in resolutions) {
-                        val pkg = res.activityInfo.packageName
-                        if (pkg != context.packageName && !addedPackages.contains(pkg)) {
-                            val label = res.loadLabel(pm).toString()
-                            addedPackages.add(pkg)
-                            list.add(Triple(pkg, label, "ALLOWED ASSIST"))
-                        }
-                    }
-                } catch (_: Exception) {}
-
-                // 3. Known installed AI assistants
-                val knownAi = listOf(
-                    "com.google.android.apps.bard" to "Google Gemini",
-                    "com.google.android.googlequicksearchbox" to "Google Assistant",
-                    "com.openai.chatgpt" to "ChatGPT",
-                    "com.microsoft.copilot" to "Microsoft Copilot",
-                    "com.anthropic.claude" to "Claude",
-                    "ai.perplexity.app" to "Perplexity"
-                )
-
-                for ((pkg, name) in knownAi) {
-                    if (!addedPackages.contains(pkg)) {
-                        try {
-                            val appInfo = pm.getApplicationInfo(pkg, 0)
-                            if (appInfo.enabled) {
-                                val label = pm.getApplicationLabel(appInfo).toString().ifBlank { name }
-                                addedPackages.add(pkg)
-                                list.add(Triple(pkg, label, "INSTALLED AI"))
-                            }
-                        } catch (_: Exception) {}
-                    }
-                }
-
-                list
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MinimalCardBg)
-                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
-            ) {
-                availableAssistants.forEachIndexed { index, (id, name, tag) ->
-                    val isSelected = if (assistantPackage.isNullOrBlank() || assistantPackage == "SYSTEM_DEFAULT") {
-                        id == "SYSTEM_DEFAULT"
-                    } else {
-                        id == assistantPackage
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                scope.launch {
-                                    userPreferences.setAssistantPackage(id)
-                                }
-                            }
-                            .padding(horizontal = 14.dp, vertical = 13.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = name,
-                                    fontFamily = AppleSanFranciscoFontFamily,
-                                    fontSize = 14.sp,
-                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                    color = if (isSelected) MinimalWhite else MinimalGray
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .background(MinimalDarkCardBg)
-                                        .border(0.5.dp, if (tag == "OS DEFAULT") MinimalRed else MinimalDarkGray, RoundedCornerShape(4.dp))
-                                        .padding(horizontal = 5.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = tag,
-                                        fontFamily = AppleSanFranciscoFontFamily,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (tag == "OS DEFAULT") MinimalRed else MinimalGray
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = when (id) {
-                                    "SYSTEM_DEFAULT" -> "Hands off to Android's default assistant with voice & overlay support"
-                                    else -> "Directly launches $name for assistant actions"
-                                },
-                                fontFamily = AppleSanFranciscoFontFamily,
-                                fontSize = 11.sp,
-                                color = MinimalDarkGray
-                            )
-                        }
-
-                        if (isSelected) {
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(CircleShape)
-                                    .background(MinimalRed),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Selected",
-                                    tint = MinimalWhite,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    if (index < availableAssistants.size - 1) {
-                        HorizontalDivider(color = MinimalDarkGray.copy(alpha = 0.5f), thickness = 0.5.dp)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            SettingsActionRow(
-                title = "android assistant permissions",
-                subtitle = "configure default digital assistant in Android OS settings",
-                onClick = {
-                    try {
-                        val intent = Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)
-                        context.startActivity(intent)
-                    } catch (_: Exception) {
-                        try {
-                            val intent = Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
-                            context.startActivity(intent)
-                        } catch (_: Exception) {
-                            context.startActivity(Intent(Settings.ACTION_SETTINGS))
-                        }
-                    }
-                }
-            )
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // SECTION 7: WALLPAPER & APPEARANCE
-            Text(
-                text = "WALLPAPER & APPEARANCE",
-                fontFamily = AppleSanFranciscoFontFamily,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = MinimalRed,
-                letterSpacing = 1.sp
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Curated Wallpaper Presets
-            Text(
-                text = "CURATED PRESETS",
-                fontFamily = AppleSanFranciscoFontFamily,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MinimalGray,
-                letterSpacing = 0.5.sp
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            val wallpaperPresets = listOf(
-                Pair("DEFAULT_AMOLED", "AMOLED Black"),
-                Pair("DEFAULT_MIDNIGHT", "Midnight"),
-                Pair("DEFAULT_SPACE_GRAY", "Space Gray"),
-                Pair("DEFAULT_TITANIUM", "Titanium")
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                wallpaperPresets.forEach { (presetKey, presetName) ->
-                    val isSelected = customWallpaperUri == presetKey
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isSelected) MinimalRed else MinimalDarkCardBg)
-                            .border(1.dp, if (isSelected) MinimalRed else MinimalDarkGray, RoundedCornerShape(8.dp))
-                            .clickable {
-                                scope.launch { userPreferences.setCustomWallpaperUri(presetKey) }
-                            }
-                            .padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = presetName,
-                            fontFamily = AppleSanFranciscoFontFamily,
-                            fontSize = 10.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = MinimalWhite
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            SettingsActionRow(
-                title = "choose wallpaper from photos",
-                subtitle = if (customWallpaperUri != null && !customWallpaperUri!!.startsWith("DEFAULT_")) "custom photo active (tap to change)" else "select an image from your gallery",
-                onClick = { wallpaperPickerLauncher.launch("image/*") }
-            )
-
-            if (customWallpaperUri != null) {
-                HorizontalDivider(color = MinimalDarkGray, thickness = 0.5.dp)
-                SettingsActionRow(
-                    title = "reset to theme background",
-                    subtitle = "restore default clean background",
-                    onClick = { scope.launch { userPreferences.setCustomWallpaperUri(null) } }
-                )
-            }
-
-            HorizontalDivider(color = MinimalDarkGray, thickness = 0.5.dp)
-
-            SettingsActionRow(
-                title = "system live wallpaper picker",
-                subtitle = "launch Android system wallpaper settings",
-                onClick = {
-                    try {
-                        val intent = Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER)
-                        context.startActivity(intent)
-                    } catch (_: Exception) {
-                        val intent = Intent(Intent.ACTION_SET_WALLPAPER)
-                        context.startActivity(Intent.createChooser(intent, "Choose Wallpaper"))
-                    }
-                }
-            )
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // SECTION 8: NOTIFICATIONS & FEEDBACK
-            Text(
-                text = "FEEDBACK & POPUPS",
-                fontFamily = AppleSanFranciscoFontFamily,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = MinimalRed,
-                letterSpacing = 1.sp
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MinimalCardBg)
-                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
-                    .clickable {
-                        scope.launch { userPreferences.setShowCommandFeedback(!showCommandFeedback) }
-                    }
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "action confirmation popups",
-                        fontFamily = AppleSanFranciscoFontFamily,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MinimalWhite
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "show transient 'Saved to-do' / 'Saved note' pill on home screen",
-                        fontFamily = AppleSanFranciscoFontFamily,
+                        text = "system · appearance · shortcuts · cards",
                         fontSize = 11.sp,
                         color = MinimalGray
                     )
                 }
-                Switch(
-                    checked = showCommandFeedback,
-                    onCheckedChange = { checked ->
-                        scope.launch { userPreferences.setShowCommandFeedback(checked) }
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MinimalWhite,
-                        checkedTrackColor = MinimalRed,
-                        uncheckedThumbColor = MinimalGray,
-                        uncheckedTrackColor = MinimalDarkCardBg
-                    )
-                )
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // SECTION 8: SYSTEM CONFIGURATION
-            Text(
-                text = "SYSTEM CONFIGURATION",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = MinimalRed,
-                letterSpacing = 1.sp
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            SettingsActionRow(
-                title = "set as default launcher",
-                subtitle = "make Minimal OS your primary home",
-                onClick = {
-                    try {
-                        val intent = Intent(Settings.ACTION_HOME_SETTINGS)
-                        context.startActivity(intent)
-                    } catch (_: Exception) {
-                        val intent = Intent(Settings.ACTION_SETTINGS)
-                        context.startActivity(intent)
+            // SEARCH BAR (Top Brand Signature)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MinimalCardBg)
+                    .border(1.dp, MinimalDarkGray.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = MinimalGray,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (searchQuery.isEmpty()) {
+                            Text(
+                                text = "Search settings…",
+                                fontSize = 14.sp,
+                                color = MinimalGray
+                            )
+                        }
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            singleLine = true,
+                            cursorBrush = SolidColor(MinimalRed),
+                            textStyle = TextStyle(
+                                fontSize = 14.sp,
+                                color = MinimalWhite,
+                                fontWeight = FontWeight.Normal
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(
+                            onClick = { searchQuery = "" },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Clear",
+                                tint = MinimalGray,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
-            )
+            }
 
-            HorizontalDivider(color = MinimalDarkGray, thickness = 0.5.dp)
+            Spacer(modifier = Modifier.height(20.dp))
 
-            SettingsActionRow(
-                title = "notification access",
-                subtitle = "grant permission for unified hub alerts",
-                onClick = {
-                    val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-                    context.startActivity(intent)
+            // =========================================================
+            // CATEGORY 1: PERSONALIZATION & APPEARANCE
+            // =========================================================
+            if (q.isEmpty() || "appearance".contains(q) || "theme".contains(q) || "color".contains(q) || "accent".contains(q) || "wallpaper".contains(q)) {
+                SettingsSectionHeader(title = "APPEARANCE & PERSONALIZATION")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SettingsGroupCard {
+                    // Item 1: Theme & Accent
+                    SettingsItemRow(
+                        icon = Icons.Default.Palette,
+                        title = "Themes & Accents",
+                        subtitle = activeTheme.name,
+                        trailingContent = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .clip(CircleShape)
+                                        .background(activeTheme.accent)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(
+                                    imageVector = if (isThemeExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null,
+                                    tint = MinimalGray,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        },
+                        onClick = { isThemeExpanded = !isThemeExpanded }
+                    )
+
+                    AnimatedVisibility(
+                        visible = isThemeExpanded || q.contains("theme") || q.contains("accent"),
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MinimalDarkCardBg.copy(alpha = 0.5f))
+                                .padding(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                MinimalThemeRegistry.THEMES.forEach { theme ->
+                                    val isSelected = theme.id == currentThemeId
+                                    Box(
+                                        modifier = Modifier
+                                            .width(130.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(theme.card)
+                                            .border(
+                                                width = if (isSelected) 2.dp else 1.dp,
+                                                color = if (isSelected) theme.accent else theme.border,
+                                                shape = RoundedCornerShape(10.dp)
+                                            )
+                                            .clickable {
+                                                scope.launch { userPreferences.setThemeId(theme.id) }
+                                            }
+                                            .padding(10.dp)
+                                    ) {
+                                        Column {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(14.dp)
+                                                        .clip(CircleShape)
+                                                        .background(theme.accent)
+                                                )
+                                                if (isSelected) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Check,
+                                                        contentDescription = null,
+                                                        tint = theme.accent,
+                                                        modifier = Modifier.size(14.dp)
+                                                    )
+                                                }
+                                            }
+                                            Spacer(modifier = Modifier.height(10.dp))
+                                            Text(
+                                                text = theme.name,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = theme.textPrimary
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    SettingsInsetDivider()
+
+                    // Item 2: Wallpaper & Background
+                    val wallpaperLabel = when {
+                        customWallpaperUri == null -> "Default Minimal Black"
+                        customWallpaperUri == "DEFAULT_AMOLED" -> "AMOLED Black"
+                        customWallpaperUri == "DEFAULT_MIDNIGHT" -> "Midnight"
+                        customWallpaperUri == "DEFAULT_SPACE_GRAY" -> "Space Gray"
+                        customWallpaperUri == "DEFAULT_TITANIUM" -> "Titanium"
+                        else -> "Custom Gallery Photo"
+                    }
+
+                    SettingsItemRow(
+                        icon = Icons.Default.Wallpaper,
+                        title = "Wallpaper & Style",
+                        subtitle = wallpaperLabel,
+                        trailingContent = {
+                            Icon(
+                                imageVector = if (isWallpaperExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = MinimalGray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = { isWallpaperExpanded = !isWallpaperExpanded }
+                    )
+
+                    AnimatedVisibility(
+                        visible = isWallpaperExpanded || q.contains("wallpaper"),
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MinimalDarkCardBg.copy(alpha = 0.5f))
+                                .padding(14.dp)
+                        ) {
+                            Text(
+                                text = "CURATED PRESETS",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MinimalGray,
+                                letterSpacing = 0.5.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            val wallpaperPresets = listOf(
+                                Pair("DEFAULT_AMOLED", "AMOLED Black"),
+                                Pair("DEFAULT_MIDNIGHT", "Midnight"),
+                                Pair("DEFAULT_SPACE_GRAY", "Space Gray"),
+                                Pair("DEFAULT_TITANIUM", "Titanium")
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                wallpaperPresets.forEach { (presetKey, presetName) ->
+                                    val isSelected = customWallpaperUri == presetKey
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (isSelected) MinimalRed else MinimalDarkCardBg)
+                                            .border(1.dp, if (isSelected) MinimalRed else MinimalDarkGray, RoundedCornerShape(8.dp))
+                                            .clickable {
+                                                scope.launch { userPreferences.setCustomWallpaperUri(presetKey) }
+                                            }
+                                            .padding(vertical = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = presetName,
+                                            fontSize = 9.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = MinimalWhite
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Gallery photo and live wallpaper actions
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MinimalDarkCardBg)
+                                        .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
+                                        .clickable { wallpaperPickerLauncher.launch("image/*") }
+                                        .padding(vertical = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Photo Gallery",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MinimalWhite
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MinimalDarkCardBg)
+                                        .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
+                                        .clickable {
+                                            try {
+                                                val intent = Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER)
+                                                context.startActivity(intent)
+                                            } catch (_: Exception) {
+                                                val intent = Intent(Intent.ACTION_SET_WALLPAPER)
+                                                context.startActivity(Intent.createChooser(intent, "Choose Wallpaper"))
+                                            }
+                                        }
+                                        .padding(vertical = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Live Wallpaper",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MinimalWhite
+                                    )
+                                }
+                            }
+
+                            if (customWallpaperUri != null) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "reset to default theme background",
+                                    fontSize = 11.sp,
+                                    color = MinimalRed,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier
+                                        .clickable { scope.launch { userPreferences.setCustomWallpaperUri(null) } }
+                                        .padding(vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
                 }
-            )
+                Spacer(modifier = Modifier.height(20.dp))
+            }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            // =========================================================
+            // CATEGORY 2: HOME SCREEN & SHORTCUTS
+            // =========================================================
+            if (q.isEmpty() || "home".contains(q) || "shortcut".contains(q) || "widget".contains(q) || "todo".contains(q) || "note".contains(q)) {
+                SettingsSectionHeader(title = "HOME SCREEN & SHORTCUTS")
+                Spacer(modifier = Modifier.height(8.dp))
 
-            // ABOUT
-            Text(
-                text = "ABOUT",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = MinimalRed,
-                letterSpacing = 1.sp
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Minimal OS Launcher v1.4.0\nCreated by MD. Zarif Azfar\nApple San Francisco typography · Rabbit Deck · Multi-Theme engine.",
-                fontSize = 13.sp,
-                color = MinimalGray,
-                lineHeight = 18.sp
-            )
+                SettingsGroupCard {
+                    // Item 1: Pinned App Shortcuts
+                    SettingsItemRow(
+                        icon = Icons.Default.Apps,
+                        title = "Pinned App Shortcuts",
+                        subtitle = if (favoriteAppsList.isEmpty()) "No shortcuts pinned" else "${favoriteAppsList.size} apps pinned to Home",
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MinimalGray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = { showAppPickerModal = true }
+                    )
 
-            Spacer(modifier = Modifier.height(40.dp))
+                    // Preview chips of pinned shortcuts
+                    if (favoriteAppsList.isNotEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 56.dp, end = 16.dp, bottom = 12.dp)
+                        ) {
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                favoriteAppsList.forEach { app ->
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(MinimalDarkCardBg)
+                                            .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(text = app.label, fontSize = 11.sp, color = MinimalWhite)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    SettingsInsetDivider()
+
+                    // Item 2: Home Widgets Layout & Order
+                    val allHomeWidgetOptions = listOf(
+                        Pair("TODOS", "to-dos (active focus tasks)"),
+                        Pair("NOTES", "notes (recent memos)"),
+                        Pair("CALENDAR", "calendar (glance & schedule)"),
+                        Pair("SHORTCUTS", "shortcuts (favorite pinned apps)"),
+                        Pair("SYSTEM_WIDGETS", "widgets (native Android app widgets)")
+                    )
+
+                    SettingsItemRow(
+                        icon = Icons.Default.Widgets,
+                        title = "Home Widgets & Order",
+                        subtitle = "${homeWidgets.size} active widgets on Home",
+                        trailingContent = {
+                            Icon(
+                                imageVector = if (isHomeWidgetsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = MinimalGray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = { isHomeWidgetsExpanded = !isHomeWidgetsExpanded }
+                    )
+
+                    AnimatedVisibility(
+                        visible = isHomeWidgetsExpanded || q.contains("widget"),
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MinimalDarkCardBg.copy(alpha = 0.5f))
+                                .padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            homeWidgets.forEachIndexed { index, widgetKey ->
+                                val label = allHomeWidgetOptions.find { it.first == widgetKey }?.second ?: widgetKey
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MinimalCardBg)
+                                        .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MinimalWhite,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (index > 0) {
+                                            IconButton(
+                                                onClick = {
+                                                    val mutable = homeWidgets.toMutableList()
+                                                    val temp = mutable[index]
+                                                    mutable[index] = mutable[index - 1]
+                                                    mutable[index - 1] = temp
+                                                    scope.launch { userPreferences.setHomeWidgets(mutable) }
+                                                },
+                                                modifier = Modifier.size(26.dp)
+                                            ) {
+                                                Icon(imageVector = Icons.Default.ArrowUpward, contentDescription = "Move Up", tint = MinimalRed, modifier = Modifier.size(15.dp))
+                                            }
+                                        }
+                                        if (index < homeWidgets.size - 1) {
+                                            IconButton(
+                                                onClick = {
+                                                    val mutable = homeWidgets.toMutableList()
+                                                    val temp = mutable[index]
+                                                    mutable[index] = mutable[index + 1]
+                                                    mutable[index + 1] = temp
+                                                    scope.launch { userPreferences.setHomeWidgets(mutable) }
+                                                },
+                                                modifier = Modifier.size(26.dp)
+                                            ) {
+                                                Icon(imageVector = Icons.Default.ArrowDownward, contentDescription = "Move Down", tint = MinimalRed, modifier = Modifier.size(15.dp))
+                                            }
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                val updated = homeWidgets - widgetKey
+                                                scope.launch { userPreferences.setHomeWidgets(updated) }
+                                            },
+                                            modifier = Modifier.size(26.dp)
+                                        ) {
+                                            Icon(imageVector = Icons.Default.Close, contentDescription = "Remove", tint = MinimalGray, modifier = Modifier.size(15.dp))
+                                        }
+                                    }
+                                }
+                            }
+
+                            val unadded = allHomeWidgetOptions.filter { it.first !in homeWidgets }
+                            if (unadded.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    unadded.forEach { (key, name) ->
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(MinimalDarkCardBg)
+                                                .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
+                                                .clickable {
+                                                    scope.launch { userPreferences.setHomeWidgets(homeWidgets + key) }
+                                                }
+                                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = "+ ${name.split(" ").first()}",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MinimalRed
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    SettingsInsetDivider()
+
+                    // Item 3: Show All To-Dos on Home
+                    SettingsItemRow(
+                        icon = Icons.Default.Checklist,
+                        title = "Show All To-Dos on Home",
+                        subtitle = if (showAllTodosPref) "Displays complete task list" else "Displays top 2 active focus tasks",
+                        trailingContent = {
+                            Switch(
+                                checked = showAllTodosPref,
+                                onCheckedChange = { scope.launch { userPreferences.setHomeShowAllTodos(it) } },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MinimalWhite,
+                                    checkedTrackColor = MinimalRed,
+                                    uncheckedThumbColor = MinimalGray,
+                                    uncheckedTrackColor = MinimalDarkCardBg
+                                )
+                            )
+                        }
+                    )
+
+                    SettingsInsetDivider()
+
+                    // Item 4: Show All Notes on Home
+                    SettingsItemRow(
+                        icon = Icons.Default.Description,
+                        title = "Show All Notes on Home",
+                        subtitle = if (showAllNotesPref) "Displays full memo notes list" else "Displays 2 most recent notes",
+                        trailingContent = {
+                            Switch(
+                                checked = showAllNotesPref,
+                                onCheckedChange = { scope.launch { userPreferences.setHomeShowAllNotes(it) } },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MinimalWhite,
+                                    checkedTrackColor = MinimalRed,
+                                    uncheckedThumbColor = MinimalGray,
+                                    uncheckedTrackColor = MinimalDarkCardBg
+                                )
+                            )
+                        }
+                    )
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
+            // =========================================================
+            // CATEGORY 3: WIDGETS DECK
+            // =========================================================
+            if (q.isEmpty() || "deck".contains(q) || "widget".contains(q) || "card".contains(q) || "pomodoro".contains(q)) {
+                SettingsSectionHeader(title = "WIDGETS DECK (PAGE 3)")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val allDeckWidgetOptions = listOf(
+                    Pair("NOTES", "notes card"),
+                    Pair("TODOS", "to-dos card"),
+                    Pair("CALENDAR", "schedule & events card"),
+                    Pair("POMODORO", "pomodoro focus card"),
+                    Pair("TIMERS", "quick timers card"),
+                    Pair("SYSTEM_WIDGETS", "system app widgets")
+                )
+
+                SettingsGroupCard {
+                    SettingsItemRow(
+                        icon = Icons.Default.ViewAgenda,
+                        title = "Deck Cards Arrangement",
+                        subtitle = "${deckWidgetsOrder.size} interactive cards on Deck",
+                        trailingContent = {
+                            Icon(
+                                imageVector = if (isDeckWidgetsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = MinimalGray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = { isDeckWidgetsExpanded = !isDeckWidgetsExpanded }
+                    )
+
+                    AnimatedVisibility(
+                        visible = isDeckWidgetsExpanded || q.contains("deck"),
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MinimalDarkCardBg.copy(alpha = 0.5f))
+                                .padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            deckWidgetsOrder.forEachIndexed { index, deckKey ->
+                                val label = allDeckWidgetOptions.find { it.first == deckKey }?.second ?: deckKey
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MinimalCardBg)
+                                        .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MinimalWhite,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (index > 0) {
+                                            IconButton(
+                                                onClick = {
+                                                    val mutable = deckWidgetsOrder.toMutableList()
+                                                    val temp = mutable[index]
+                                                    mutable[index] = mutable[index - 1]
+                                                    mutable[index - 1] = temp
+                                                    scope.launch { userPreferences.setDeckWidgetsOrder(mutable) }
+                                                },
+                                                modifier = Modifier.size(26.dp)
+                                            ) {
+                                                Icon(imageVector = Icons.Default.ArrowUpward, contentDescription = "Move Up", tint = MinimalRed, modifier = Modifier.size(15.dp))
+                                            }
+                                        }
+                                        if (index < deckWidgetsOrder.size - 1) {
+                                            IconButton(
+                                                onClick = {
+                                                    val mutable = deckWidgetsOrder.toMutableList()
+                                                    val temp = mutable[index]
+                                                    mutable[index] = mutable[index + 1]
+                                                    mutable[index + 1] = temp
+                                                    scope.launch { userPreferences.setDeckWidgetsOrder(mutable) }
+                                                },
+                                                modifier = Modifier.size(26.dp)
+                                            ) {
+                                                Icon(imageVector = Icons.Default.ArrowDownward, contentDescription = "Move Down", tint = MinimalRed, modifier = Modifier.size(15.dp))
+                                            }
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                val updated = deckWidgetsOrder - deckKey
+                                                scope.launch { userPreferences.setDeckWidgetsOrder(updated) }
+                                            },
+                                            modifier = Modifier.size(26.dp)
+                                        ) {
+                                            Icon(imageVector = Icons.Default.Close, contentDescription = "Remove", tint = MinimalGray, modifier = Modifier.size(15.dp))
+                                        }
+                                    }
+                                }
+                            }
+
+                            val unaddedDeck = allDeckWidgetOptions.filter { it.first !in deckWidgetsOrder }
+                            if (unaddedDeck.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    unaddedDeck.forEach { (key, name) ->
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(MinimalDarkCardBg)
+                                                .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
+                                                .clickable {
+                                                    scope.launch { userPreferences.setDeckWidgetsOrder(deckWidgetsOrder + key) }
+                                                }
+                                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = "+ ${name.split(" ").first()}",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MinimalRed
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
+            // =========================================================
+            // CATEGORY 4: COMMANDS & SHORTCUTS
+            // =========================================================
+            if (q.isEmpty() || "command".contains(q) || "alias".contains(q) || "feedback".contains(q) || "popup".contains(q)) {
+                SettingsSectionHeader(title = "COMMAND BAR & SHORTCUTS")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SettingsGroupCard {
+                    // Item 1: Custom Command Aliases
+                    SettingsItemRow(
+                        icon = Icons.Default.Terminal,
+                        title = "Command Aliases",
+                        subtitle = if (customCommands.isEmpty()) "Tap to add triggers (yt, wifi, gh)" else "${customCommands.size} custom keywords active",
+                        trailingContent = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(MinimalRed)
+                                        .clickable { showAddCommandModal = true }
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(text = "+ ADD", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MinimalWhite)
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(
+                                    imageVector = if (isAliasesExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null,
+                                    tint = MinimalGray,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        },
+                        onClick = { isAliasesExpanded = !isAliasesExpanded }
+                    )
+
+                    AnimatedVisibility(
+                        visible = isAliasesExpanded || q.contains("alias") || q.contains("command"),
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MinimalDarkCardBg.copy(alpha = 0.5f))
+                                .padding(12.dp)
+                        ) {
+                            if (customCommands.isEmpty()) {
+                                Text(
+                                    text = "No custom aliases yet. Tap '+ ADD' to create shortcuts like 'yt' ➔ YouTube or 'wifi' ➔ Settings.",
+                                    fontSize = 12.sp,
+                                    color = MinimalGray,
+                                    lineHeight = 16.sp
+                                )
+                            } else {
+                                customCommands.forEach { (keyword, target) ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 6.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = keyword,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MinimalRed,
+                                                fontFamily = FontFamily.Monospace
+                                            )
+                                            Text(
+                                                text = "➔ $target",
+                                                fontSize = 11.sp,
+                                                color = MinimalGray,
+                                                fontFamily = FontFamily.Monospace
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { scope.launch { userPreferences.removeCustomCommand(keyword) } },
+                                            modifier = Modifier.size(26.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.DeleteOutline,
+                                                contentDescription = "Delete",
+                                                tint = MinimalGray,
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    SettingsInsetDivider()
+
+                    // Item 2: Action Confirmation Feedback
+                    SettingsItemRow(
+                        icon = Icons.Default.NotificationsActive,
+                        title = "Action Confirmation Popups",
+                        subtitle = "Show transient 'Saved to-do' / 'Saved note' banner",
+                        trailingContent = {
+                            Switch(
+                                checked = showCommandFeedback,
+                                onCheckedChange = { scope.launch { userPreferences.setShowCommandFeedback(it) } },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MinimalWhite,
+                                    checkedTrackColor = MinimalRed,
+                                    uncheckedThumbColor = MinimalGray,
+                                    uncheckedTrackColor = MinimalDarkCardBg
+                                )
+                            )
+                        }
+                    )
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
+            // =========================================================
+            // CATEGORY 5: SYSTEM & ASSISTANT
+            // =========================================================
+            if (q.isEmpty() || "assistant".contains(q) || "system".contains(q) || "launcher".contains(q) || "notification".contains(q)) {
+                SettingsSectionHeader(title = "SYSTEM & ASSISTANT")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SettingsGroupCard {
+                    // Item 1: Digital Assistant
+                    val currentAssistantName = availableAssistants.find {
+                        if (assistantPackage.isNullOrBlank() || assistantPackage == "SYSTEM_DEFAULT") {
+                            it.first == "SYSTEM_DEFAULT"
+                        } else {
+                            it.first == assistantPackage
+                        }
+                    }?.second ?: "System Default Assistant"
+
+                    SettingsItemRow(
+                        icon = Icons.Default.AutoAwesome,
+                        title = "Digital Assistant",
+                        subtitle = currentAssistantName,
+                        trailingContent = {
+                            Icon(
+                                imageVector = if (isAssistantExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = MinimalGray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = { isAssistantExpanded = !isAssistantExpanded }
+                    )
+
+                    AnimatedVisibility(
+                        visible = isAssistantExpanded || q.contains("assistant"),
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MinimalDarkCardBg.copy(alpha = 0.5f))
+                        ) {
+                            availableAssistants.forEachIndexed { index, (id, name, tag) ->
+                                val isSelected = if (assistantPackage.isNullOrBlank() || assistantPackage == "SYSTEM_DEFAULT") {
+                                    id == "SYSTEM_DEFAULT"
+                                } else {
+                                    id == assistantPackage
+                                }
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { scope.launch { userPreferences.setAssistantPackage(id) } }
+                                        .padding(horizontal = 14.dp, vertical = 11.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = name,
+                                                fontSize = 13.sp,
+                                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                                color = if (isSelected) MinimalWhite else MinimalGray
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(4.dp))
+                                                    .background(MinimalDarkCardBg)
+                                                    .border(0.5.dp, if (tag == "OS DEFAULT") MinimalRed else MinimalDarkGray, RoundedCornerShape(4.dp))
+                                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = tag,
+                                                    fontSize = 8.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (tag == "OS DEFAULT") MinimalRed else MinimalGray
+                                                )
+                                            }
+                                        }
+                                    }
+                                    if (isSelected) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(20.dp)
+                                                .clip(CircleShape)
+                                                .background(MinimalRed),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = MinimalWhite,
+                                                modifier = Modifier.size(13.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                if (index < availableAssistants.size - 1) {
+                                    HorizontalDivider(color = MinimalDarkGray.copy(alpha = 0.3f), thickness = 0.5.dp)
+                                }
+                            }
+                        }
+                    }
+
+                    SettingsInsetDivider()
+
+                    // Item 2: Set as Default Launcher
+                    SettingsItemRow(
+                        icon = Icons.Default.Home,
+                        title = "Default Home Launcher",
+                        subtitle = "Configure Minimal OS as your primary home",
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MinimalGray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = {
+                            try {
+                                val intent = Intent(Settings.ACTION_HOME_SETTINGS)
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                val intent = Intent(Settings.ACTION_SETTINGS)
+                                context.startActivity(intent)
+                            }
+                        }
+                    )
+
+                    SettingsInsetDivider()
+
+                    // Item 3: Notification Hub Access
+                    SettingsItemRow(
+                        icon = Icons.Default.Notifications,
+                        title = "Notification Hub Access",
+                        subtitle = "Grant permissions for unified notifications",
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MinimalGray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = {
+                            val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                            context.startActivity(intent)
+                        }
+                    )
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
+            // =========================================================
+            // CATEGORY 6: ABOUT & SYSTEM INFO
+            // =========================================================
+            if (q.isEmpty() || "about".contains(q) || "version".contains(q) || "release".contains(q)) {
+                SettingsSectionHeader(title = "ABOUT & INFORMATION")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SettingsGroupCard {
+                    SettingsItemRow(
+                        icon = Icons.Default.Info,
+                        title = "Minimal OS Launcher",
+                        subtitle = "v1.6.0 (Official Stable) · MD. Zarif Azfar",
+                        trailingContent = {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MinimalDarkCardBg)
+                                    .border(1.dp, MinimalRed, RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(text = "STABLE", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MinimalRed)
+                            }
+                        }
+                    )
+
+                    SettingsInsetDivider()
+
+                    SettingsItemRow(
+                        icon = Icons.Default.Code,
+                        title = "GitHub Releases & Documentation",
+                        subtitle = "Check updates, docs, or report issues",
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MinimalGray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = {
+                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/zaryif/Minimal_os/releases"))
+                            context.startActivity(browserIntent)
+                        }
+                    )
+                }
+                Spacer(modifier = Modifier.height(30.dp))
+            }
         }
 
-        // App Picker Dialog for Home Shortcuts
+        // =========================================================
+        // SEARCHABLE APP PICKER DIALOG (FOR SHORTCUTS)
+        // =========================================================
         if (showAppPickerModal) {
+            var appPickerSearchQuery by remember { mutableStateOf("") }
+            val filteredInstalledApps = remember(appPickerSearchQuery, installedApps) {
+                if (appPickerSearchQuery.isBlank()) {
+                    installedApps
+                } else {
+                    val searchFilter = appPickerSearchQuery.lowercase()
+                    installedApps.filter { it.label.lowercase().contains(searchFilter) }
+                }
+            }
+
             Dialog(onDismissRequest = { showAppPickerModal = false }) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(480.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .height(520.dp)
+                        .clip(RoundedCornerShape(20.dp))
                         .background(MinimalCardBg)
-                        .border(1.dp, MinimalDarkGray, RoundedCornerShape(16.dp))
+                        .border(1.dp, MinimalDarkGray, RoundedCornerShape(20.dp))
                         .padding(18.dp)
                 ) {
                     Column(modifier = Modifier.fillMaxSize()) {
@@ -1083,13 +1296,20 @@ fun SettingsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "SELECT HOME SHORTCUTS",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MinimalWhite
-                            )
-                            IconButton(onClick = { showAppPickerModal = false }, modifier = Modifier.size(28.dp)) {
+                            Column {
+                                Text(
+                                    text = "HOME SHORTCUTS",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MinimalWhite
+                                )
+                                Text(
+                                    text = "${favoriteAppPackages.size} apps selected",
+                                    fontSize = 11.sp,
+                                    color = MinimalRed
+                                )
+                            }
+                            IconButton(onClick = { showAppPickerModal = false }, modifier = Modifier.size(30.dp)) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "Close",
@@ -1101,16 +1321,63 @@ fun SettingsScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
+                        // App Picker Search Bar
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(42.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MinimalDarkCardBg)
+                                .border(1.dp, MinimalDarkGray, RoundedCornerShape(10.dp))
+                                .padding(horizontal = 10.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = MinimalGray,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(modifier = Modifier.weight(1f)) {
+                                    if (appPickerSearchQuery.isEmpty()) {
+                                        Text(text = "Search apps to pin…", fontSize = 13.sp, color = MinimalGray)
+                                    }
+                                    BasicTextField(
+                                        value = appPickerSearchQuery,
+                                        onValueChange = { appPickerSearchQuery = it },
+                                        singleLine = true,
+                                        cursorBrush = SolidColor(MinimalRed),
+                                        textStyle = TextStyle(fontSize = 13.sp, color = MinimalWhite),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                                if (appPickerSearchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { appPickerSearchQuery = "" }, modifier = Modifier.size(24.dp)) {
+                                        Icon(imageVector = Icons.Default.Clear, contentDescription = null, tint = MinimalGray, modifier = Modifier.size(14.dp))
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
                         LazyColumn(
-                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            items(installedApps) { app ->
+                            items(filteredInstalledApps, key = { it.packageName }) { app ->
                                 val isFav = app.packageName in favoriteAppPackages
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp))
+                                        .clip(RoundedCornerShape(10.dp))
                                         .background(if (isFav) MinimalDarkCardBg else MinimalCardBg)
                                         .clickable {
                                             val updated = if (isFav) {
@@ -1120,15 +1387,15 @@ fun SettingsScreen(
                                             }
                                             scope.launch { userPreferences.setFavoriteApps(updated) }
                                         }
-                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        .padding(horizontal = 12.dp, vertical = 9.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Box(
                                         modifier = Modifier
-                                            .size(20.dp)
-                                            .clip(RoundedCornerShape(4.dp))
+                                            .size(22.dp)
+                                            .clip(RoundedCornerShape(6.dp))
                                             .background(if (isFav) MinimalRed else MinimalDarkCardBg)
-                                            .border(1.dp, if (isFav) MinimalRed else MinimalDarkGray, RoundedCornerShape(4.dp)),
+                                            .border(1.dp, if (isFav) MinimalRed else MinimalDarkGray, RoundedCornerShape(6.dp)),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         if (isFav) {
@@ -1144,17 +1411,39 @@ fun SettingsScreen(
                                     Text(
                                         text = app.label,
                                         fontSize = 14.sp,
-                                        color = MinimalWhite
+                                        color = MinimalWhite,
+                                        fontWeight = if (isFav) FontWeight.SemiBold else FontWeight.Normal
                                     )
                                 }
                             }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MinimalRed)
+                                .clickable { showAppPickerModal = false }
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "DONE",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MinimalWhite
+                            )
                         }
                     }
                 }
             }
         }
 
-        // Add Custom Command Dialog
+        // =========================================================
+        // ADD CUSTOM COMMAND ALIAS DIALOG
+        // =========================================================
         if (showAddCommandModal) {
             var newKeyword by remember { mutableStateOf("") }
             var newTarget by remember { mutableStateOf("") }
@@ -1163,9 +1452,9 @@ fun SettingsScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(0.95f)
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(18.dp))
                         .background(MinimalBlack)
-                        .border(1.dp, MinimalDarkGray, RoundedCornerShape(16.dp))
+                        .border(1.dp, MinimalDarkGray, RoundedCornerShape(18.dp))
                         .padding(20.dp)
                 ) {
                     Column {
@@ -1198,7 +1487,7 @@ fun SettingsScreen(
                                 .padding(horizontal = 12.dp, vertical = 10.dp)
                         ) {
                             if (newKeyword.isEmpty()) {
-                                Text(text = "e.g. yt, gh, wifi, reddit", fontSize = 13.sp, color = MinimalGray)
+                                Text(text = "e.g. yt, gh, wifi, rd", fontSize = 13.sp, color = MinimalGray)
                             }
                             BasicTextField(
                                 value = newKeyword,
@@ -1237,7 +1526,6 @@ fun SettingsScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Quick presets chips
                         Text(text = "QUICK TEMPLATES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MinimalGray)
                         Spacer(modifier = Modifier.height(6.dp))
                         Row(
@@ -1292,29 +1580,104 @@ fun SettingsScreen(
     }
 }
 
+// =========================================================================
+// TOP-BRAND DESIGN SYSTEM COMPONENTS
+// =========================================================================
+
 @Composable
-private fun SettingsActionRow(
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
+private fun SettingsSectionHeader(title: String) {
+    Text(
+        text = title,
+        fontFamily = AppleSanFranciscoFontFamily,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold,
+        color = MinimalRed,
+        letterSpacing = 1.sp,
+        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+    )
+}
+
+@Composable
+private fun SettingsGroupCard(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
 ) {
     Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MinimalCardBg)
+            .border(1.dp, MinimalDarkGray.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun SettingsItemRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    trailingContent: (@Composable () -> Unit)? = null,
+    onClick: (() -> Unit)? = null
+) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 12.dp)
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = title,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Medium,
-            color = MinimalWhite
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = subtitle,
-            fontSize = 12.sp,
-            color = MinimalGray
-        )
+        // Lead Icon Container (Top brand standard)
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MinimalDarkCardBg)
+                .border(0.5.dp, MinimalDarkGray, RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MinimalRed,
+                modifier = Modifier.size(17.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Title & Dynamic Subtitle / State
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontFamily = AppleSanFranciscoFontFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MinimalWhite
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                fontFamily = AppleSanFranciscoFontFamily,
+                fontSize = 11.sp,
+                color = MinimalGray,
+                lineHeight = 15.sp
+            )
+        }
+
+        if (trailingContent != null) {
+            Spacer(modifier = Modifier.width(8.dp))
+            trailingContent()
+        }
     }
+}
+
+@Composable
+private fun SettingsInsetDivider() {
+    HorizontalDivider(
+        color = MinimalDarkGray.copy(alpha = 0.4f),
+        thickness = 0.5.dp,
+        modifier = Modifier.padding(start = 58.dp)
+    )
 }
