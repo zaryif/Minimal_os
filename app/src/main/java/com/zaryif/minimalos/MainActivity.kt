@@ -26,7 +26,6 @@ import com.zaryif.minimalos.data.repository.AppRepository
 import com.zaryif.minimalos.data.repository.ContactRepository
 import com.zaryif.minimalos.data.repository.StorageRepository
 import com.zaryif.minimalos.domain.usecase.ExecuteCommandUseCase
-import com.zaryif.minimalos.service.MinimalNotificationService
 import com.zaryif.minimalos.ui.apps.AppDrawerScreen
 import com.zaryif.minimalos.ui.components.MinimalClockSheet
 import com.zaryif.minimalos.ui.components.MinimalMemoSheet
@@ -61,6 +60,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var appWidgetManager: AppWidgetManager
     private lateinit var appWidgetHost: AppWidgetHost
 
+    private var isAddingToHome = false
+
     private val pickWidgetLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val appWidgetId = result.data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1) ?: -1
@@ -74,7 +75,11 @@ class MainActivity : ComponentActivity() {
                     configWidgetLauncher.launch(configIntent)
                 } else {
                     lifecycleScope.launch {
-                        userPreferences.addSystemWidget(appWidgetId)
+                        if (isAddingToHome) {
+                            userPreferences.addHomeSystemWidget(appWidgetId)
+                        } else {
+                            userPreferences.addDeckSystemWidget(appWidgetId)
+                        }
                     }
                 }
             }
@@ -86,13 +91,18 @@ class MainActivity : ComponentActivity() {
             val appWidgetId = result.data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1) ?: -1
             if (appWidgetId != -1) {
                 lifecycleScope.launch {
-                    userPreferences.addSystemWidget(appWidgetId)
+                    if (isAddingToHome) {
+                        userPreferences.addHomeSystemWidget(appWidgetId)
+                    } else {
+                        userPreferences.addDeckSystemWidget(appWidgetId)
+                    }
                 }
             }
         }
     }
 
-    fun launchWidgetPicker() {
+    fun launchDeckWidgetPicker() {
+        isAddingToHome = false
         val newId = appWidgetHost.allocateAppWidgetId()
         val pickIntent = Intent(AppWidgetManager.ACTION_APPWIDGET_PICK).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, newId)
@@ -100,10 +110,26 @@ class MainActivity : ComponentActivity() {
         pickWidgetLauncher.launch(pickIntent)
     }
 
-    fun deleteWidget(id: Int) {
+    fun launchHomeWidgetPicker() {
+        isAddingToHome = true
+        val newId = appWidgetHost.allocateAppWidgetId()
+        val pickIntent = Intent(AppWidgetManager.ACTION_APPWIDGET_PICK).apply {
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, newId)
+        }
+        pickWidgetLauncher.launch(pickIntent)
+    }
+
+    fun deleteDeckWidget(id: Int) {
         appWidgetHost.deleteAppWidgetId(id)
         lifecycleScope.launch {
-            userPreferences.removeSystemWidget(id)
+            userPreferences.removeDeckSystemWidget(id)
+        }
+    }
+
+    fun deleteHomeWidget(id: Int) {
+        appWidgetHost.deleteAppWidgetId(id)
+        lifecycleScope.launch {
+            userPreferences.removeHomeSystemWidget(id)
         }
     }
 
@@ -127,7 +153,8 @@ class MainActivity : ComponentActivity() {
         )
 
         setContent {
-            MinimalOSTheme {
+            val themeId by userPreferences.themeId.collectAsState(initial = "AMOLED_RED")
+            MinimalOSTheme(themeId = themeId) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MinimalBlack
@@ -140,8 +167,10 @@ class MainActivity : ComponentActivity() {
                         executeCommandUseCase = executeCommandUseCase,
                         appWidgetManager = appWidgetManager,
                         appWidgetHost = appWidgetHost,
-                        onAddWidget = { launchWidgetPicker() },
-                        onDeleteWidget = { deleteWidget(it) }
+                        onAddDeckWidget = { launchDeckWidgetPicker() },
+                        onDeleteDeckWidget = { deleteDeckWidget(it) },
+                        onAddHomeWidget = { launchHomeWidgetPicker() },
+                        onDeleteHomeWidget = { deleteHomeWidget(it) }
                     )
                 }
             }
@@ -168,11 +197,13 @@ fun MinimalAppContent(
     executeCommandUseCase: ExecuteCommandUseCase,
     appWidgetManager: AppWidgetManager,
     appWidgetHost: AppWidgetHost,
-    onAddWidget: () -> Unit,
-    onDeleteWidget: (Int) -> Unit
+    onAddDeckWidget: () -> Unit,
+    onDeleteDeckWidget: (Int) -> Unit,
+    onAddHomeWidget: () -> Unit,
+    onDeleteHomeWidget: (Int) -> Unit
 ) {
     val installedApps = remember { appRepository.getInstalledApps() }
-    val systemWidgetIds by userPreferences.systemWidgets.collectAsState(initial = emptySet())
+    val deckWidgetIds by userPreferences.deckSystemWidgets.collectAsState(initial = emptySet())
 
     var currentScreen by remember { mutableStateOf(ScreenState.HOME) }
 
@@ -194,6 +225,10 @@ fun MinimalAppContent(
                     contactRepository = contactRepository,
                     userPreferences = userPreferences,
                     executeCommandUseCase = executeCommandUseCase,
+                    appWidgetManager = appWidgetManager,
+                    appWidgetHost = appWidgetHost,
+                    onAddHomeWidget = onAddHomeWidget,
+                    onDeleteHomeWidget = onDeleteHomeWidget,
                     onNavigateToApps = { currentScreen = ScreenState.APPS },
                     onNavigateToHub = { currentScreen = ScreenState.HUB },
                     onNavigateToWidgets = { currentScreen = ScreenState.WIDGETS },
@@ -219,12 +254,13 @@ fun MinimalAppContent(
             ScreenState.WIDGETS -> {
                 WidgetsDeckScreen(
                     storageRepository = storageRepository,
+                    userPreferences = userPreferences,
                     executeCommandUseCase = executeCommandUseCase,
-                    systemWidgetIds = systemWidgetIds,
+                    systemWidgetIds = deckWidgetIds,
                     appWidgetManager = appWidgetManager,
                     appWidgetHost = appWidgetHost,
-                    onAddSystemWidget = onAddWidget,
-                    onDeleteSystemWidget = onDeleteWidget,
+                    onAddSystemWidget = onAddDeckWidget,
+                    onDeleteSystemWidget = onDeleteDeckWidget,
                     onBackToHome = { currentScreen = ScreenState.HOME }
                 )
             }

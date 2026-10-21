@@ -49,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
@@ -57,6 +58,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.appwidget.AppWidgetHost
+import android.appwidget.AppWidgetManager
 import com.zaryif.minimalos.data.preferences.UserPreferences
 import com.zaryif.minimalos.data.repository.ContactRepository
 import com.zaryif.minimalos.data.repository.StorageRepository
@@ -65,7 +68,9 @@ import com.zaryif.minimalos.domain.model.Contact
 import com.zaryif.minimalos.domain.usecase.CommandResult
 import com.zaryif.minimalos.domain.usecase.ExecuteCommandUseCase
 import com.zaryif.minimalos.ui.components.CommandBar
-import com.zaryif.minimalos.ui.components.MinimalHomeWidgets
+import com.zaryif.minimalos.ui.components.CommandHelpDialog
+import com.zaryif.minimalos.ui.components.MinimalDynamicHomeWidgets
+import com.zaryif.minimalos.ui.components.MinimalLiveTimerCard
 import com.zaryif.minimalos.ui.components.MinimalNotificationBanner
 import com.zaryif.minimalos.ui.theme.MinimalBlack
 import com.zaryif.minimalos.ui.theme.MinimalCardBg
@@ -75,6 +80,7 @@ import com.zaryif.minimalos.ui.theme.MinimalGray
 import com.zaryif.minimalos.ui.theme.MinimalRed
 import com.zaryif.minimalos.ui.theme.MinimalWhite
 import kotlinx.coroutines.delay
+import java.io.File
 import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -88,6 +94,10 @@ fun HomeScreen(
     contactRepository: ContactRepository,
     userPreferences: UserPreferences,
     executeCommandUseCase: ExecuteCommandUseCase,
+    appWidgetManager: AppWidgetManager? = null,
+    appWidgetHost: AppWidgetHost? = null,
+    onAddHomeWidget: (() -> Unit)? = null,
+    onDeleteHomeWidget: ((Int) -> Unit)? = null,
     onNavigateToApps: () -> Unit,
     onNavigateToHub: () -> Unit,
     onNavigateToWidgets: () -> Unit,
@@ -97,13 +107,21 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val todos by storageRepository.todos.collectAsState()
+    val notes by storageRepository.notes.collectAsState()
     val wallpaperUriString by userPreferences.customWallpaperUri.collectAsState(initial = null)
     val favoriteAppPackages by userPreferences.favoriteApps.collectAsState(initial = emptySet())
+    val homeWidgetsOrder by userPreferences.homeWidgets.collectAsState(initial = UserPreferences.DEFAULT_HOME_WIDGETS)
+    val homeSystemWidgets by userPreferences.homeSystemWidgets.collectAsState(initial = emptySet())
+    val showAllTodosPref by userPreferences.homeShowAllTodos.collectAsState(initial = false)
+    val showAllNotesPref by userPreferences.homeShowAllNotes.collectAsState(initial = false)
+    val showCommandFeedback by userPreferences.showCommandFeedback.collectAsState(initial = false)
+    val assistantPackage by userPreferences.assistantPackage.collectAsState(initial = null)
 
     var notificationMessage by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
     var matchingApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
     var matchingContacts by remember { mutableStateOf<List<Contact>>(emptyList()) }
+    var showHelpDialog by remember { mutableStateOf(false) }
 
     val isImeVisible = WindowInsets.isImeVisible
     val isTyping = isImeVisible || query.isNotEmpty()
@@ -131,16 +149,21 @@ fun HomeScreen(
     LaunchedEffect(query) {
         val lower = query.lowercase().trim()
 
-        // 1. Contacts search for calling/messaging
-        matchingContacts = if (lower.startsWith("#") || lower.startsWith("call ") || lower.startsWith("dial ") ||
-            lower.startsWith("@") || lower.startsWith("msg ") || lower.startsWith("sms ")
+        // 1. Contacts search for calling/messaging/whatsapp
+        matchingContacts = if ((lower.startsWith("#") || lower.startsWith("call ") || lower.startsWith("dial ") ||
+            lower.startsWith("@") || lower.startsWith("msg ") || lower.startsWith("sms ") ||
+            lower.startsWith("message ") || lower.startsWith("=") || lower.startsWith("wa ") || lower.startsWith("whatsapp ")) &&
+            !lower.contains(":")
         ) {
             val contactQuery = when {
-                lower.startsWith("#") || lower.startsWith("@") -> lower.drop(1).trim()
+                lower.startsWith("#") || lower.startsWith("@") || lower.startsWith("=") -> lower.drop(1).trim()
                 lower.startsWith("call ") -> lower.removePrefix("call ").trim()
                 lower.startsWith("dial ") -> lower.removePrefix("dial ").trim()
                 lower.startsWith("msg ") -> lower.removePrefix("msg ").trim()
                 lower.startsWith("sms ") -> lower.removePrefix("sms ").trim()
+                lower.startsWith("message ") -> lower.removePrefix("message ").trim()
+                lower.startsWith("wa ") -> lower.removePrefix("wa ").trim()
+                lower.startsWith("whatsapp ") -> lower.removePrefix("whatsapp ").trim()
                 else -> ""
             }
             if (contactQuery.isNotEmpty()) {
@@ -158,8 +181,10 @@ fun HomeScreen(
             !query.startsWith("!") && !query.startsWith("*") &&
             !query.startsWith("+") && !query.startsWith(":") &&
             !query.startsWith("?") && !query.startsWith("^") &&
-            !query.startsWith("&") && !lower.startsWith("call ") &&
-            !lower.startsWith("dial ") && !lower.startsWith("msg ") &&
+            !query.startsWith("&") && !query.startsWith("=") &&
+            !lower.startsWith("call ") && !lower.startsWith("dial ") &&
+            !lower.startsWith("msg ") && !lower.startsWith("sms ") &&
+            !lower.startsWith("wa ") && !lower.startsWith("whatsapp ") &&
             !lower.startsWith("note ") && !lower.startsWith("todo ") &&
             !lower.startsWith("event ") && !lower.startsWith("alarm ") &&
             !lower.startsWith("timer ") && !lower.startsWith("drive ") &&
@@ -184,30 +209,89 @@ fun HomeScreen(
             .fillMaxSize()
             .background(MinimalBlack)
     ) {
-        // Optional Custom Wallpaper background from photos
+        // Custom or Preset Wallpaper background
         if (!wallpaperUriString.isNullOrBlank()) {
-            val bitmap = remember(wallpaperUriString) {
-                try {
-                    val uri = Uri.parse(wallpaperUriString)
-                    val input: InputStream? = context.contentResolver.openInputStream(uri)
-                    BitmapFactory.decodeStream(input)
-                } catch (_: Exception) {
-                    null
+            when (wallpaperUriString) {
+                "DEFAULT_MIDNIGHT" -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(Color(0xFF04060E), Color(0xFF0B1222), Color(0xFF04060E))
+                                )
+                            )
+                    )
                 }
-            }
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "Custom Wallpaper",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                // Dark scrim over wallpaper to guarantee high contrast
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.78f))
-                )
+                "DEFAULT_SPACE_GRAY" -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(Color(0xFF101012), Color(0xFF1C1C1E), Color(0xFF0E0E10))
+                                )
+                            )
+                    )
+                }
+                "DEFAULT_TITANIUM" -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(Color(0xFF090611), Color(0xFF171026), Color(0xFF07050E))
+                                )
+                            )
+                    )
+                }
+                "DEFAULT_AMOLED" -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black)
+                    )
+                }
+                else -> {
+                    val bitmap = remember(wallpaperUriString) {
+                        try {
+                            val path = wallpaperUriString!!
+                            val file = File(path)
+                            if (file.exists()) {
+                                val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                                BitmapFactory.decodeFile(file.absolutePath, opts)
+                                var sampleSize = 1
+                                val maxDim = 2048
+                                while (opts.outWidth / sampleSize > maxDim || opts.outHeight / sampleSize > maxDim) {
+                                    sampleSize *= 2
+                                }
+                                val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+                                BitmapFactory.decodeFile(file.absolutePath, decodeOpts)
+                            } else {
+                                val uri = Uri.parse(path)
+                                context.contentResolver.openInputStream(uri)?.use { stream ->
+                                    BitmapFactory.decodeStream(stream)
+                                }
+                            }
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                    if (bitmap != null) {
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "Custom Wallpaper",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        // Dark scrim over wallpaper to guarantee high contrast
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.72f))
+                        )
+                    }
+                }
             }
         }
 
@@ -254,7 +338,7 @@ fun HomeScreen(
                 // Mini Apps Shortcuts (Assistant, Clock, Memo, Settings)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
-                        onClick = { launchNativeAssistant(context) },
+                        onClick = { launchNativeAssistant(context, assistantPackage) },
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
@@ -321,11 +405,22 @@ fun HomeScreen(
                             color = MinimalGray
                         )
 
-                        Spacer(modifier = Modifier.height(18.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
 
-                        // Minimal Home Widgets (Focus To-Dos & Calendar Glance)
-                        MinimalHomeWidgets(
+                        // Live countdown card for active Pomodoro or Timer sessions
+                        MinimalLiveTimerCard(modifier = Modifier.padding(bottom = 12.dp))
+
+                        // Dynamic Customizable Home Screen Widgets
+                        MinimalDynamicHomeWidgets(
+                            widgetsOrder = homeWidgetsOrder,
                             todos = todos,
+                            notes = notes,
+                            favoriteApps = favoriteApps,
+                            homeSystemWidgetIds = homeSystemWidgets,
+                            appWidgetManager = appWidgetManager,
+                            appWidgetHost = appWidgetHost,
+                            showAllTodosPreference = showAllTodosPref,
+                            showAllNotesPreference = showAllNotesPref,
                             onToggleTodo = { id -> storageRepository.toggleTodo(id) },
                             onOpenMemo = onOpenMemo,
                             onOpenCalendar = {
@@ -336,39 +431,14 @@ fun HomeScreen(
                                 try {
                                     context.startActivity(calIntent)
                                 } catch (_: Exception) {}
-                            }
+                            },
+                            onLaunchApp = { app ->
+                                val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                intent?.let { context.startActivity(it) }
+                            },
+                            onAddHomeWidget = onAddHomeWidget,
+                            onDeleteHomeWidget = onDeleteHomeWidget
                         )
-
-                        // User-configured Favorite App Shortcuts (if configured in Settings)
-                        if (favoriteApps.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                favoriteApps.take(4).forEach { app ->
-                                    Box(
-                                        modifier = Modifier
-                                            .padding(horizontal = 4.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(MinimalDarkCardBg)
-                                            .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
-                                            .clickable {
-                                                val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                                intent?.let { context.startActivity(it) }
-                                            }
-                                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                                    ) {
-                                        Text(
-                                            text = app.label,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MinimalWhite
-                                        )
-                                    }
-                                }
-                            }
-                        }
                     }
                 } else {
                     // Compact header when typing to leave maximum space for suggestions and input
@@ -433,10 +503,16 @@ fun HomeScreen(
                         when (result) {
                             is CommandResult.Success -> {
                                 query = ""
-                                notificationMessage = result.message
+                                if (showCommandFeedback) {
+                                    notificationMessage = result.message
+                                }
                             }
                             is CommandResult.LaunchedApp -> {
                                 query = ""
+                            }
+                            is CommandResult.ShowHelp -> {
+                                query = ""
+                                showHelpDialog = true
                             }
                             is CommandResult.Error -> {
                                 notificationMessage = result.error
@@ -451,9 +527,16 @@ fun HomeScreen(
                     },
                     matchingContacts = matchingContacts,
                     onContactSelected = { contact ->
-                        query = ""
-                        executeCommandUseCase.execute("#${contact.phoneNumber}")
-                    }
+                        if (query.startsWith("wa") || query.startsWith("=")) {
+                            query = "wa ${contact.name}: "
+                        } else if (query.startsWith("#") || query.startsWith("call")) {
+                            query = ""
+                            executeCommandUseCase.execute("#${contact.phoneNumber}")
+                        } else {
+                            query = "@ ${contact.name}: "
+                        }
+                    },
+                    onHelpRequested = { showHelpDialog = true }
                 )
             }
         }
@@ -463,10 +546,47 @@ fun HomeScreen(
             message = notificationMessage,
             modifier = Modifier.align(Alignment.TopCenter)
         )
+
+        // Interactive Command Box Guide & Cheat Sheet
+        if (showHelpDialog) {
+            CommandHelpDialog(
+                onDismiss = { showHelpDialog = false },
+                onSelectExample = { example ->
+                    query = example
+                }
+            )
+        }
     }
 }
 
-private fun launchNativeAssistant(context: Context) {
+private fun launchNativeAssistant(context: Context, assistantPackage: String?) {
+    val pm = context.packageManager
+
+    // 1. If user chose a specific installed assistant app
+    if (!assistantPackage.isNullOrBlank() && assistantPackage != "SYSTEM_DEFAULT") {
+        try {
+            val assistIntent = Intent(Intent.ACTION_ASSIST).apply {
+                `package` = assistantPackage
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            if (pm.resolveActivity(assistIntent, 0) != null) {
+                context.startActivity(assistIntent)
+                return
+            }
+        } catch (_: Exception) {}
+
+        val launchIntent = pm.getLaunchIntentForPackage(assistantPackage)?.apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        if (launchIntent != null) {
+            try {
+                context.startActivity(launchIntent)
+                return
+            } catch (_: Exception) {}
+        }
+    }
+
+    // 2. Default to Android OS digital assistant / voice command
     val voiceIntent = Intent(Intent.ACTION_VOICE_COMMAND).apply {
         flags = Intent.FLAG_ACTIVITY_NEW_TASK
     }

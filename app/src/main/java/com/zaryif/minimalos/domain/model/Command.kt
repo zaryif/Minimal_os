@@ -2,6 +2,7 @@ package com.zaryif.minimalos.domain.model
 
 enum class CommandType(val symbol: Char, val displayName: String) {
     MESSAGE('@', "message"),
+    WHATSAPP('=', "whatsapp"),
     CALL('#', "call"),
     TODO('-', "to-do"),
     NOTE('!', "note"),
@@ -11,6 +12,7 @@ enum class CommandType(val symbol: Char, val displayName: String) {
     ASK('?', "ask"),
     DRIVE('^', "drive"),
     EMAIL('&', "email"),
+    HELP('~', "help"),
     SEARCH('\u0000', "search");
 
     companion object {

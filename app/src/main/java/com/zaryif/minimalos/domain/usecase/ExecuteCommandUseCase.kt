@@ -16,6 +16,8 @@ import com.zaryif.minimalos.data.repository.ContactRepository
 import com.zaryif.minimalos.data.repository.StorageRepository
 import com.zaryif.minimalos.domain.model.CommandType
 import com.zaryif.minimalos.domain.parser.CommandParser
+import com.zaryif.minimalos.domain.parser.NaturalDateTimeParser
+import com.zaryif.minimalos.domain.timer.PomodoroTimerManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import java.util.Calendar
@@ -26,6 +28,7 @@ import java.util.regex.Pattern
 sealed class CommandResult {
     data class Success(val message: String) : CommandResult()
     data class LaunchedApp(val appName: String) : CommandResult()
+    data class ShowHelp(val commands: List<Pair<String, String>>) : CommandResult()
     data class Error(val error: String) : CommandResult()
 }
 
@@ -42,10 +45,29 @@ class ExecuteCommandUseCase(
             return CommandResult.Error("Empty command")
         }
 
+        val trimmed = rawInput.trim()
+
+        // 1. Check custom commands/aliases first
+        val customMap = runBlocking {
+            try {
+                userPreferences.customCommands.first()
+            } catch (_: Exception) {
+                emptyMap()
+            }
+        }
+        val firstToken = trimmed.split(" ").first().lowercase()
+        val remainingArgs = if (trimmed.contains(" ")) trimmed.substringAfter(" ").trim() else ""
+
+        if (customMap.containsKey(firstToken)) {
+            val target = customMap[firstToken] ?: ""
+            return executeCustomCommand(target, remainingArgs)
+        }
+
         val command = CommandParser.parse(rawInput)
 
         return when (command.type) {
             CommandType.MESSAGE -> handleMessage(command.argument)
+            CommandType.WHATSAPP -> handleWhatsapp(command.argument)
             CommandType.CALL -> handleCall(command.argument)
             CommandType.TODO -> handleTodo(command.argument)
             CommandType.NOTE -> handleNote(command.argument)
@@ -55,6 +77,7 @@ class ExecuteCommandUseCase(
             CommandType.ASK -> handleAsk(command.argument)
             CommandType.DRIVE -> handleDrive(command.argument)
             CommandType.EMAIL -> handleEmail(command.argument)
+            CommandType.HELP -> handleHelp()
             CommandType.SEARCH -> handleAppSearchOrWebFallback(command.argument)
         }
     }
@@ -62,18 +85,42 @@ class ExecuteCommandUseCase(
     private fun handleMessage(arg: String): CommandResult {
         if (arg.isBlank()) return CommandResult.Error("Enter recipient or message")
 
-        val parts = arg.split(" ", limit = 2)
         var targetNumber = ""
-        var body = arg
+        var recipientName = ""
+        var body = ""
 
-        if (parts.size >= 2) {
-            val matchedContacts = contactRepository.searchContacts(parts[0])
-            if (matchedContacts.isNotEmpty()) {
-                targetNumber = matchedContacts.first().phoneNumber
-                body = parts[1]
-            } else if (parts[0].all { it.isDigit() || it == '+' || it == '-' }) {
-                targetNumber = parts[0]
-                body = parts[1]
+        if (arg.contains(":")) {
+            val contactQuery = arg.substringBefore(":").trim()
+            body = arg.substringAfter(":").trim()
+            recipientName = contactQuery
+            val matched = contactRepository.searchContacts(contactQuery)
+            if (matched.isNotEmpty()) {
+                targetNumber = matched.first().phoneNumber
+            } else if (contactQuery.any { it.isDigit() }) {
+                targetNumber = contactQuery
+            }
+        } else {
+            val parts = arg.split(" ", limit = 2)
+            if (parts.size >= 2) {
+                val matchedContacts = contactRepository.searchContacts(parts[0])
+                if (matchedContacts.isNotEmpty()) {
+                    targetNumber = matchedContacts.first().phoneNumber
+                    recipientName = matchedContacts.first().name
+                    body = parts[1]
+                } else if (parts[0].all { it.isDigit() || it == '+' || it == '-' }) {
+                    targetNumber = parts[0]
+                    body = parts[1]
+                } else {
+                    body = arg
+                }
+            } else {
+                val matched = contactRepository.searchContacts(arg)
+                if (matched.isNotEmpty()) {
+                    targetNumber = matched.first().phoneNumber
+                    recipientName = matched.first().name
+                } else {
+                    body = arg
+                }
             }
         }
 
@@ -84,13 +131,77 @@ class ExecuteCommandUseCase(
             } else {
                 Uri.parse("smsto:")
             }
-            putExtra("sms_body", body)
+            if (body.isNotBlank()) {
+                putExtra("sms_body", body)
+            }
         }
         return try {
             context.startActivity(intent)
-            CommandResult.Success("Opening messages…")
+            val desc = if (recipientName.isNotBlank()) "Opening SMS to $recipientName…" else "Opening messages…"
+            CommandResult.Success(desc)
         } catch (e: Exception) {
             CommandResult.Error("Could not open messages: ${e.message}")
+        }
+    }
+
+    private fun handleWhatsapp(arg: String): CommandResult {
+        if (arg.isBlank()) return CommandResult.Error("Enter contact or message for WhatsApp")
+
+        var targetNumber = ""
+        var recipientName = ""
+        var body = ""
+
+        if (arg.contains(":")) {
+            val contactQuery = arg.substringBefore(":").trim()
+            body = arg.substringAfter(":").trim()
+            recipientName = contactQuery
+            val matched = contactRepository.searchContacts(contactQuery)
+            if (matched.isNotEmpty()) {
+                targetNumber = matched.first().phoneNumber
+            } else if (contactQuery.any { it.isDigit() }) {
+                targetNumber = contactQuery
+            }
+        } else {
+            val parts = arg.split(" ", limit = 2)
+            val matchedContacts = contactRepository.searchContacts(parts[0])
+            if (matchedContacts.isNotEmpty()) {
+                targetNumber = matchedContacts.first().phoneNumber
+                recipientName = matchedContacts.first().name
+                body = if (parts.size > 1) parts[1] else ""
+            } else if (parts[0].any { it.isDigit() }) {
+                targetNumber = parts[0]
+                body = if (parts.size > 1) parts[1] else ""
+            } else {
+                body = arg
+            }
+        }
+
+        val digits = targetNumber.filter { it.isDigit() || it == '+' }
+        val url = if (digits.isNotBlank()) {
+            "https://api.whatsapp.com/send?phone=$digits&text=${Uri.encode(body)}"
+        } else {
+            "https://api.whatsapp.com/send?text=${Uri.encode(body)}"
+        }
+
+        val waIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            setPackage("com.whatsapp")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+
+        return try {
+            context.startActivity(waIntent)
+            val desc = if (recipientName.isNotBlank()) "Opening WhatsApp to $recipientName…" else "Opening WhatsApp…"
+            CommandResult.Success(desc)
+        } catch (_: Exception) {
+            val generalIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            try {
+                context.startActivity(generalIntent)
+                CommandResult.Success("Opening WhatsApp…")
+            } catch (e: Exception) {
+                CommandResult.Error("Could not launch WhatsApp: ${e.message}")
+            }
         }
     }
 
@@ -176,9 +287,9 @@ class ExecuteCommandUseCase(
     private fun handleEvent(arg: String): CommandResult {
         if (arg.isBlank()) return CommandResult.Error("Enter event title")
 
-        val parsedTimeResult = parseNaturalEventTime(arg)
-        val cleanTitle = parsedTimeResult.cleanTitle
-        val startMillis = parsedTimeResult.startMillis
+        val parsed = NaturalDateTimeParser.parse(arg, "Event")
+        val cleanTitle = parsed.cleanTitle
+        val startMillis = parsed.startMillis
         val endMillis = startMillis + (60 * 60 * 1000) // Default 1 hour duration
 
         val hasCalendarPermission = ContextCompat.checkSelfPermission(
@@ -213,8 +324,8 @@ class ExecuteCommandUseCase(
                 val uri = context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
                 if (uri != null) {
                     val timeStr = "%02d:%02d".format(
-                        parsedTimeResult.calendar.get(Calendar.HOUR_OF_DAY),
-                        parsedTimeResult.calendar.get(Calendar.MINUTE)
+                        parsed.calendar.get(Calendar.HOUR_OF_DAY),
+                        parsed.calendar.get(Calendar.MINUTE)
                     )
                     return CommandResult.Success("Event '$cleanTitle' at $timeStr set in Calendar")
                 }
@@ -256,47 +367,74 @@ class ExecuteCommandUseCase(
         val calendar: Calendar
     )
 
+    private fun parseNaturalTime(input: String): Pair<Int, Int> {
+        val lower = input.lowercase(Locale.getDefault()).trim()
+        
+        // Match patterns like: "at 7:30 am", "at 7.30 am", "7: 30 am", "7. 30 am", "7.30am", "7:30pm", "7 am", "at 7pm", "19:30", "19.30"
+        val regex = Regex("(?i)\\b(?:at\\s+|for\\s+)?(\\d{1,2})(?:\\s*[:.]\\s*(\\d{2}))?\\s*(am|pm)?\\b")
+        val match = regex.find(lower)
+        if (match != null) {
+            val hStr = match.groupValues[1]
+            val mStr = match.groupValues[2]
+            val ampm = match.groupValues[3].lowercase()
+
+            var h = hStr.toIntOrNull() ?: 7
+            val m = mStr.toIntOrNull() ?: 0
+
+            if (ampm == "pm" && h < 12) h += 12
+            else if (ampm == "am" && h == 12) h = 0
+
+            return Pair(h.coerceIn(0, 23), m.coerceIn(0, 59))
+        }
+
+        // Common colloquial terms
+        if (lower.contains("noon")) return Pair(12, 0)
+        if (lower.contains("midnight")) return Pair(0, 0)
+        if (lower.contains("morning")) return Pair(8, 0)
+        if (lower.contains("afternoon")) return Pair(14, 0)
+        if (lower.contains("evening")) return Pair(18, 0)
+        if (lower.contains("night")) return Pair(21, 0)
+
+        return Pair(7, 0)
+    }
+
     private fun parseNaturalEventTime(rawInput: String): ParsedEventTime {
         val cal = Calendar.getInstance()
         var title = rawInput.trim()
-
         val lower = rawInput.lowercase(Locale.getDefault())
 
-        // Check if "tomorrow" is mentioned
         if (lower.contains("tomorrow")) {
             cal.add(Calendar.DAY_OF_YEAR, 1)
             title = title.replace(Regex("(?i)\\btomorrow\\b"), "").trim()
         }
 
-        // Match patterns like: "at 4:30pm", "at 4pm", "at 16:00", "at 4", "4pm", "11:30am"
-        val timeRegex = Pattern.compile("(?i)\\b(?:at\\s+)?(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?\\b")
-        val matcher = timeRegex.matcher(lower)
+        // Match time with colon or dot, with optional space between hour & min
+        val timeRegex = Regex("(?i)\\b(?:at\\s+|for\\s+)?(\\d{1,2})(?:\\s*[:.]\\s*(\\d{2}))?\\s*(am|pm)?\\b")
+        val match = timeRegex.find(lower)
 
-        var foundTime = false
-        var hour = cal.get(Calendar.HOUR_OF_DAY) + 1 // Default to next hour
+        var hour = cal.get(Calendar.HOUR_OF_DAY) + 1
         var minute = 0
 
-        while (matcher.find()) {
-            val rawHour = matcher.group(1)?.toIntOrNull()
-            val rawMin = matcher.group(2)?.toIntOrNull() ?: 0
-            val ampm = matcher.group(3)?.lowercase()
+        if (match != null) {
+            val rawHour = match.groupValues[1].toIntOrNull()
+            val rawMin = match.groupValues[2].toIntOrNull() ?: 0
+            val ampm = match.groupValues[3].lowercase()
 
             if (rawHour != null && rawHour in 1..24) {
                 hour = rawHour
                 minute = rawMin
                 if (ampm == "pm" && hour < 12) hour += 12
                 if (ampm == "am" && hour == 12) hour = 0
-                if (ampm == null && hour in 1..7) hour += 12 // Assume 2-7 means PM for events
-                foundTime = true
+                if (ampm.isBlank() && hour in 1..7) hour += 12 // Assume 2-7 means PM for daytime events
 
-                // Remove the time portion from title
-                title = title.removeRange(matcher.start(), matcher.end()).trim()
-                break
+                // Remove matched time segment from title
+                title = title.removeRange(match.range).trim()
             }
         }
 
         // Clean up remaining dangling prepositions like "at" or "on"
-        title = title.replace(Regex("(?i)\\b(at|on)\\s*$"), "").trim()
+        title = title.replace(Regex("(?i)\\b(at|on|for)\\s*$"), "").trim()
+        title = title.replace(Regex("(?i)^\\b(at|on|for)\\s+"), "").trim()
         if (title.isBlank()) title = "New Event"
 
         cal.set(Calendar.HOUR_OF_DAY, hour)
@@ -314,49 +452,44 @@ class ExecuteCommandUseCase(
     private fun handleTimer(arg: String): CommandResult {
         val lower = arg.lowercase().trim()
         val seconds = when {
-            lower.endsWith("s") -> lower.dropLast(1).toIntOrNull() ?: 60
-            lower.endsWith("m") -> (lower.dropLast(1).toIntOrNull() ?: 5) * 60
-            lower.endsWith("h") -> (lower.dropLast(1).toIntOrNull() ?: 1) * 3600
-            else -> (lower.toIntOrNull() ?: 5) * 60
+            lower.endsWith("s") -> lower.dropLast(1).trim().toIntOrNull() ?: 60
+            lower.endsWith("m") -> (lower.dropLast(1).trim().toIntOrNull() ?: 5) * 60
+            lower.endsWith("min") -> (lower.dropLast(3).trim().toIntOrNull() ?: 5) * 60
+            lower.endsWith("mins") -> (lower.dropLast(4).trim().toIntOrNull() ?: 5) * 60
+            lower.endsWith("h") -> (lower.dropLast(1).trim().toIntOrNull() ?: 1) * 3600
+            lower.contains("pomo") -> 25 * 60
+            else -> (lower.filter { it.isDigit() }.toIntOrNull() ?: 5) * 60
         }
 
-        // Silent direct timer execution with EXTRA_SKIP_UI = true
+        // Start global Minimal OS live timer countdown immediately on Home Screen
+        val isPomodoro = lower.contains("pomo")
+        PomodoroTimerManager.start(seconds, if (isPomodoro) "pomodoro" else "timer")
+
+        // Also trigger Android System AlarmClock intent for native alarm service integration
         val intent = Intent(AlarmClock.ACTION_SET_TIMER).apply {
             putExtra(AlarmClock.EXTRA_LENGTH, seconds)
-            putExtra(AlarmClock.EXTRA_MESSAGE, "Minimal Timer")
+            putExtra(AlarmClock.EXTRA_MESSAGE, if (isPomodoro) "Pomodoro Focus" else "Minimal Timer")
             putExtra(AlarmClock.EXTRA_SKIP_UI, true)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         return try {
             context.startActivity(intent)
-            CommandResult.Success("Timer set for ${seconds / 60}m ${seconds % 60}s (auto)")
+            CommandResult.Success("Timer set for ${seconds / 60}m ${seconds % 60}s")
         } catch (_: Exception) {
             intent.putExtra(AlarmClock.EXTRA_SKIP_UI, false)
             try {
                 context.startActivity(intent)
                 CommandResult.Success("Set timer for ${seconds / 60}m")
             } catch (e: Exception) {
-                CommandResult.Error("Could not set timer: ${e.message}")
+                CommandResult.Success("Timer started: ${seconds / 60}m")
             }
         }
     }
 
     private fun handleAlarm(arg: String): CommandResult {
-        var hour = 7
-        var minute = 0
-        try {
-            val clean = arg.lowercase().replace(" ", "")
-            val isPm = clean.contains("pm")
-            val rawTime = clean.replace("am", "").replace("pm", "")
-            if (rawTime.contains(":")) {
-                val parts = rawTime.split(":")
-                hour = parts[0].toInt()
-                minute = parts[1].toInt()
-            } else {
-                hour = rawTime.toInt()
-            }
-            if (isPm && hour < 12) hour += 12
-        } catch (_: Exception) {}
+        val parsed = NaturalDateTimeParser.parse(arg, "Alarm")
+        val hour = parsed.hour
+        val minute = parsed.minute
 
         // Silent direct alarm execution with EXTRA_SKIP_UI = true
         val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
@@ -431,32 +564,50 @@ class ExecuteCommandUseCase(
 
     private fun handleAsk(arg: String): CommandResult {
         val query = arg.trim()
-
-        // 1. If Gemini app is installed, launch it directly
-        val geminiPkg = "com.google.android.apps.bard"
-        val pm = context.packageManager
-        val isGeminiInstalled = try {
-            pm.getPackageInfo(geminiPkg, 0)
-            true
-        } catch (_: Exception) {
-            false
+        val preferredPkg = runBlocking {
+            try { userPreferences.assistantPackage.first() } catch (_: Exception) { null }
         }
+        val pm = context.packageManager
 
-        if (isGeminiInstalled) {
-            val intent = pm.getLaunchIntentForPackage(geminiPkg)
-            if (intent != null) {
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                if (query.isNotEmpty()) {
-                    intent.putExtra(Intent.EXTRA_TEXT, query)
+        // 1. If user explicitly configured an assistant package and it is not SYSTEM_DEFAULT
+        if (!preferredPkg.isNullOrBlank() && preferredPkg != "SYSTEM_DEFAULT") {
+            try {
+                val assistIntent = Intent(Intent.ACTION_ASSIST).apply {
+                    `package` = preferredPkg
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
+                if (query.isNotEmpty()) {
+                    assistIntent.putExtra(Intent.EXTRA_TEXT, query)
+                }
+                if (pm.resolveActivity(assistIntent, 0) != null) {
+                    context.startActivity(assistIntent)
+                    val label = try {
+                        val ai = pm.getApplicationInfo(preferredPkg, 0)
+                        pm.getApplicationLabel(ai).toString()
+                    } catch (_: Exception) { "Assistant" }
+                    return CommandResult.Success("Opening $label…")
+                }
+            } catch (_: Exception) {}
+
+            val launchIntent = pm.getLaunchIntentForPackage(preferredPkg)?.apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                if (query.isNotEmpty()) {
+                    putExtra(Intent.EXTRA_TEXT, query)
+                }
+            }
+            if (launchIntent != null) {
                 try {
-                    context.startActivity(intent)
-                    return CommandResult.Success("Opening Google Gemini…")
+                    context.startActivity(launchIntent)
+                    val label = try {
+                        val ai = pm.getApplicationInfo(preferredPkg, 0)
+                        pm.getApplicationLabel(ai).toString()
+                    } catch (_: Exception) { "Assistant" }
+                    return CommandResult.Success("Opening $label…")
                 } catch (_: Exception) {}
             }
         }
 
-        // 2. Direct Android Digital Assistant / Voice Assistant overlay
+        // 2. Direct Android Digital Assistant / Voice Assistant overlay (System Default)
         if (query.isEmpty()) {
             val assistIntent = Intent(Intent.ACTION_VOICE_COMMAND).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -536,5 +687,99 @@ class ExecuteCommandUseCase(
                 CommandResult.Error("Could not search web: ${e.message}")
             }
         }
+    }
+
+    private fun executeCustomCommand(target: String, args: String): CommandResult {
+        if (target.isBlank()) return CommandResult.Error("Invalid custom command target")
+
+        // Case 1: Web URL
+        if (target.startsWith("http://") || target.startsWith("https://")) {
+            val finalUrl = when {
+                target.contains("%s") -> String.format(target, Uri.encode(args))
+                args.isNotBlank() && target.contains("?") -> "$target&q=${Uri.encode(args)}"
+                args.isNotBlank() -> "$target/search?q=${Uri.encode(args)}"
+                else -> target
+            }
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl)).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            return try {
+                context.startActivity(intent)
+                CommandResult.Success("Opening $finalUrl…")
+            } catch (e: Exception) {
+                CommandResult.Error("Could not open URL: ${e.message}")
+            }
+        }
+
+        // Case 2: Android System Settings Action
+        if (target.startsWith("android.settings.") || target.startsWith("android.provider.Settings.")) {
+            val action = if (target.startsWith("android.settings.")) {
+                target
+            } else {
+                target.replace("android.provider.Settings.", "android.settings.")
+            }
+            val intent = Intent(action).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            return try {
+                context.startActivity(intent)
+                CommandResult.Success("Opening system settings…")
+            } catch (e: Exception) {
+                CommandResult.Error("Settings action failed: ${e.message}")
+            }
+        }
+
+        // Case 3: Re-evaluate as an expanded launcher command (e.g. target is "- todo", "!", or "event")
+        val isPrefixed = CommandType.fromSymbol(target.first()) != null ||
+                listOf("alarm", "timer", "todo", "note", "event", "call", "msg", "email", "drive", "ask", "help")
+                    .any { target.lowercase().startsWith(it) }
+        if (isPrefixed) {
+            val expanded = if (args.isNotBlank()) "$target $args" else target
+            return execute(expanded)
+        }
+
+        // Case 4: Package or App Name
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(target)
+        if (launchIntent != null) {
+            launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            context.startActivity(launchIntent)
+            return CommandResult.LaunchedApp(target)
+        }
+
+        // Check by app label
+        val apps = appRepository.getInstalledApps()
+        val matched = apps.firstOrNull { it.label.equals(target, ignoreCase = true) }
+        if (matched != null) {
+            val appIntent = appRepository.getLaunchIntent(matched.packageName)
+            if (appIntent != null) {
+                appIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                context.startActivity(appIntent)
+                return CommandResult.LaunchedApp(matched.label)
+            }
+        }
+
+        // Fallback: search web with target and args
+        val query = if (args.isNotBlank()) "$target $args" else target
+        return handleAppSearchOrWebFallback(query)
+    }
+
+    private fun handleHelp(): CommandResult {
+        val helpList = listOf(
+            Pair("help or ~", "Show this complete commands and guide cheat sheet"),
+            Pair("- or todo", "- Buy groceries — add item to Focus To-Dos"),
+            Pair("! or note", "! Ideas for project — save note to Minimal Memo"),
+            Pair("* or event", "* Meeting tomorrow at 3pm — add to Calendar"),
+            Pair("+ or timer", "+ 25m or timer 15 mins — set countdown timer"),
+            Pair(": or alarm", ": 7:30 AM or alarm 6:30 — set wake-up alarm"),
+            Pair("@ or msg", "@ Alex see you soon — direct SMS to contact"),
+            Pair("# or call", "# John or call 911 — dial phone number or contact"),
+            Pair("? or ask", "? how far is the moon — ask AI / Gemini / Web"),
+            Pair("& or email", "& team@co.com Update — compose email"),
+            Pair("^ or drive", "^ project_doc — search files in Google Drive"),
+            Pair("app search", "Type any app name (e.g. 'Spotify') to launch"),
+            Pair("web search", "Type any question or text to search web"),
+            Pair("custom", "Create custom aliases & triggers in Settings")
+        )
+        return CommandResult.ShowHelp(helpList)
     }
 }

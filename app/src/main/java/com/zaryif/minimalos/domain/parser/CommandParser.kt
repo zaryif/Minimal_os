@@ -30,7 +30,9 @@ object CommandParser {
                 CommandType.TIMER -> listOf("set timer ", "timer ")
                 CommandType.DRIVE -> listOf("drive ")
                 CommandType.EMAIL -> listOf("mail ", "email ")
+                CommandType.WHATSAPP -> listOf("whatsapp ", "wa ")
                 CommandType.ASK -> listOf("ask ", "search ", "google ", "find ")
+                CommandType.HELP -> listOf("help ", "commands ", "guide ")
                 else -> emptyList()
             }
             for (p in redundantPrefixes) {
@@ -46,13 +48,23 @@ object CommandParser {
             )
         }
 
-        // 2. Check for natural language keyword prefixes
         val lower = trimmed.lowercase()
 
+        // 2. Check for help commands
+        if (lower == "help" || lower.startsWith("help ") || lower == "commands" || lower == "man" || lower == "guide") {
+            return Command(
+                type = CommandType.HELP,
+                rawInput = input,
+                argument = ""
+            )
+        }
+
+        // 3. Check for natural language keyword prefixes
         val keywordMatches = listOf(
             PrefixMapping(listOf("set alarm ", "alarm "), CommandType.ALARM),
             PrefixMapping(listOf("set timer ", "timer "), CommandType.TIMER),
             PrefixMapping(listOf("call ", "dial "), CommandType.CALL),
+            PrefixMapping(listOf("whatsapp ", "wa "), CommandType.WHATSAPP),
             PrefixMapping(listOf("msg ", "sms ", "text ", "message "), CommandType.MESSAGE),
             PrefixMapping(listOf("note ", "notes ", "keep ", "memo "), CommandType.NOTE),
             PrefixMapping(listOf("todo ", "task ", "remind ", "reminder "), CommandType.TODO),
@@ -75,7 +87,7 @@ object CommandParser {
             }
         }
 
-        // 3. Fallback: app search
+        // 4. Fallback: app search
         return Command(
             type = CommandType.SEARCH,
             rawInput = input,
@@ -88,4 +100,3 @@ object CommandParser {
         val commandType: CommandType
     )
 }
-

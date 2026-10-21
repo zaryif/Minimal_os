@@ -77,8 +77,12 @@ import com.zaryif.minimalos.ui.theme.MinimalDarkCardBg
 import com.zaryif.minimalos.ui.theme.MinimalDarkGray
 import com.zaryif.minimalos.ui.theme.MinimalGray
 import com.zaryif.minimalos.ui.theme.MinimalRed
+import com.zaryif.minimalos.data.preferences.UserPreferences
+import com.zaryif.minimalos.domain.timer.PomodoroTimerManager
+import com.zaryif.minimalos.ui.components.CustomPomodoroDurationDialog
+import com.zaryif.minimalos.ui.theme.AppleSanFranciscoFontFamily
 import com.zaryif.minimalos.ui.theme.MinimalWhite
-import kotlinx.coroutines.delay
+import androidx.compose.ui.window.Dialog
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -86,6 +90,7 @@ import java.util.Locale
 @Composable
 fun WidgetsDeckScreen(
     storageRepository: StorageRepository,
+    userPreferences: UserPreferences,
     executeCommandUseCase: ExecuteCommandUseCase,
     systemWidgetIds: Set<Int>,
     appWidgetManager: AppWidgetManager,
@@ -97,27 +102,19 @@ fun WidgetsDeckScreen(
     val context = LocalContext.current
     val todos by storageRepository.todos.collectAsState()
     val notes by storageRepository.notes.collectAsState()
+    val deckWidgetsOrder by userPreferences.deckWidgetsOrder.collectAsState(initial = UserPreferences.DEFAULT_DECK_WIDGETS)
 
     var newTodoText by remember { mutableStateOf("") }
     var newNoteText by remember { mutableStateOf("") }
     var newEventText by remember { mutableStateOf("") }
 
-    // Pomodoro Timer State
-    var pomodoroSeconds by remember { mutableIntStateOf(25 * 60) }
-    var isPomodoroRunning by remember { mutableStateOf(false) }
-    var isBreakMode by remember { mutableStateOf(false) }
-
-    LaunchedEffect(isPomodoroRunning) {
-        while (isPomodoroRunning && pomodoroSeconds > 0) {
-            delay(1000)
-            pomodoroSeconds--
-            if (pomodoroSeconds == 0) {
-                isBreakMode = !isBreakMode
-                pomodoroSeconds = if (isBreakMode) 5 * 60 else 25 * 60
-                isPomodoroRunning = false
-            }
-        }
-    }
+    // Global Pomodoro Timer State
+    val pomodoroSeconds by PomodoroTimerManager.remainingSeconds.collectAsState()
+    val isPomodoroRunning by PomodoroTimerManager.isRunning.collectAsState()
+    val isBreakMode by PomodoroTimerManager.isBreakMode.collectAsState()
+    val pomodoroWorkDuration by PomodoroTimerManager.workDurationSeconds.collectAsState()
+    var showCustomPomodoroDialog by remember { mutableStateOf(false) }
+    var customMinutesInput by remember { mutableStateOf("") }
 
     Box(
         modifier = Modifier
@@ -145,7 +142,7 @@ fun WidgetsDeckScreen(
             ) {
                 Column {
                     Text(
-                        text = "rabbit deck",
+                        text = "widgets",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                         color = MinimalWhite
@@ -168,127 +165,136 @@ fun WidgetsDeckScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Scrollable Deck of Interactive Cards
+            // Scrollable Deck of Interactive Cards (Reorderable via Settings)
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // CARD 1: Interactive Notes Stack (Direct Note Adding & Viewing)
-                item {
-                    RabbitNotesCard(
-                        notes = notes.take(4),
-                        newNoteText = newNoteText,
-                        onNewNoteChange = { newNoteText = it },
-                        onAddNote = {
-                            if (newNoteText.isNotBlank()) {
-                                storageRepository.addNote(newNoteText.trim())
-                                newNoteText = ""
+                deckWidgetsOrder.forEach { cardType ->
+                    when (cardType) {
+                        "NOTES" -> {
+                            item(key = "NOTES") {
+                                RabbitNotesCard(
+                                    notes = notes.take(4),
+                                    newNoteText = newNoteText,
+                                    onNewNoteChange = { newNoteText = it },
+                                    onAddNote = {
+                                        if (newNoteText.isNotBlank()) {
+                                            storageRepository.addNote(newNoteText.trim())
+                                            newNoteText = ""
+                                        }
+                                    },
+                                    onDeleteNote = { id -> storageRepository.deleteNote(id) }
+                                )
                             }
-                        },
-                        onDeleteNote = { id -> storageRepository.deleteNote(id) }
-                    )
-                }
+                        }
 
-                // CARD 2: Interactive To-Dos Card with inline adding
-                item {
-                    RabbitTodoCard(
-                        todos = todos.take(4),
-                        newTodoText = newTodoText,
-                        onNewTodoChange = { newTodoText = it },
-                        onAddTodo = {
-                            if (newTodoText.isNotBlank()) {
-                                storageRepository.addTodo(newTodoText.trim())
-                                newTodoText = ""
+                        "TODOS" -> {
+                            item(key = "TODOS") {
+                                RabbitTodoCard(
+                                    todos = todos.take(4),
+                                    newTodoText = newTodoText,
+                                    onNewTodoChange = { newTodoText = it },
+                                    onAddTodo = {
+                                        if (newTodoText.isNotBlank()) {
+                                            storageRepository.addTodo(newTodoText.trim())
+                                            newTodoText = ""
+                                        }
+                                    },
+                                    onToggleTodo = { id -> storageRepository.toggleTodo(id) },
+                                    onDeleteTodo = { id -> storageRepository.deleteTodo(id) }
+                                )
                             }
-                        },
-                        onToggleTodo = { id -> storageRepository.toggleTodo(id) },
-                        onDeleteTodo = { id -> storageRepository.deleteTodo(id) }
-                    )
-                }
+                        }
 
-                // CARD 3: Schedule & Events Glance
-                item {
-                    RabbitCalendarCard(
-                        newEventText = newEventText,
-                        onNewEventChange = { newEventText = it },
-                        onAddEvent = {
-                            if (newEventText.isNotBlank()) {
-                                executeCommandUseCase.execute("*${newEventText.trim()}")
-                                newEventText = ""
+                        "CALENDAR" -> {
+                            item(key = "CALENDAR") {
+                                RabbitCalendarCard(
+                                    newEventText = newEventText,
+                                    onNewEventChange = { newEventText = it },
+                                    onAddEvent = {
+                                        if (newEventText.isNotBlank()) {
+                                            executeCommandUseCase.execute("*${newEventText.trim()}")
+                                            newEventText = ""
+                                        }
+                                    },
+                                    onOpenCalendar = {
+                                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                                            data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").build()
+                                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                        }
+                                        try {
+                                            context.startActivity(intent)
+                                        } catch (_: Exception) {}
+                                    }
+                                )
                             }
-                        },
-                        onOpenCalendar = {
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").build()
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+
+                        "POMODORO" -> {
+                            item(key = "POMODORO") {
+                                RabbitPomodoroCard(
+                                    seconds = pomodoroSeconds,
+                                    isRunning = isPomodoroRunning,
+                                    isBreak = isBreakMode,
+                                    workDuration = pomodoroWorkDuration,
+                                    onToggle = { PomodoroTimerManager.toggle() },
+                                    onReset = { PomodoroTimerManager.reset() },
+                                    onSwitchMode = { breakMode -> PomodoroTimerManager.setBreakMode(breakMode) },
+                                    onSetDuration = { mins -> PomodoroTimerManager.setWorkMinutes(mins) },
+                                    onOpenCustomDialog = {
+                                        customMinutesInput = (pomodoroWorkDuration / 60).toString()
+                                        showCustomPomodoroDialog = true
+                                    }
+                                )
                             }
-                            try {
-                                context.startActivity(intent)
-                            } catch (_: Exception) {}
                         }
-                    )
-                }
 
-                // CARD 4: Interactive Pomodoro Focus Card (Rabbit style)
-                item {
-                    RabbitPomodoroCard(
-                        seconds = pomodoroSeconds,
-                        isRunning = isPomodoroRunning,
-                        isBreak = isBreakMode,
-                        onToggle = { isPomodoroRunning = !isPomodoroRunning },
-                        onReset = {
-                            isPomodoroRunning = false
-                            pomodoroSeconds = if (isBreakMode) 5 * 60 else 25 * 60
-                        },
-                        onSwitchMode = { breakMode ->
-                            isPomodoroRunning = false
-                            isBreakMode = breakMode
-                            pomodoroSeconds = if (breakMode) 5 * 60 else 25 * 60
+                        "TIMERS" -> {
+                            item(key = "TIMERS") {
+                                RabbitQuickTimersCard(
+                                    onSetTimer = { seconds, _ ->
+                                        executeCommandUseCase.execute("+${seconds}s")
+                                    }
+                                )
+                            }
                         }
-                    )
-                }
 
-                // CARD 5: Quick Silent System Timers (One-tap execution)
-                item {
-                    RabbitQuickTimersCard(
-                        onSetTimer = { seconds, _ ->
-                            executeCommandUseCase.execute("+${seconds}s")
+                        "SYSTEM_WIDGETS" -> {
+                            item(key = "SYSTEM_WIDGETS_HEADER") {
+                                RabbitSystemWidgetsHeader(onAddWidget = onAddSystemWidget)
+                            }
+
+                            if (systemWidgetIds.isEmpty()) {
+                                item(key = "SYSTEM_WIDGETS_EMPTY") {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(14.dp))
+                                            .background(MinimalCardBg)
+                                            .border(1.dp, MinimalDarkGray, RoundedCornerShape(14.dp))
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "No external app widgets added yet.\nTap '+ ADD WIDGET' to host Calendar, Spotify, Weather, etc.",
+                                            fontSize = 12.sp,
+                                            color = MinimalGray,
+                                            lineHeight = 18.sp
+                                        )
+                                    }
+                                }
+                            } else {
+                                items(systemWidgetIds.toList(), key = { "widget_$it" }) { widgetId ->
+                                    RabbitSystemWidgetHostItem(
+                                        widgetId = widgetId,
+                                        appWidgetManager = appWidgetManager,
+                                        appWidgetHost = appWidgetHost,
+                                        onDelete = { onDeleteSystemWidget(widgetId) }
+                                    )
+                                }
+                            }
                         }
-                    )
-                }
-
-                // CARD 6: Native Android System App Widgets
-                item {
-                    RabbitSystemWidgetsHeader(onAddWidget = onAddSystemWidget)
-                }
-
-                if (systemWidgetIds.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(MinimalCardBg)
-                                .border(1.dp, MinimalDarkGray, RoundedCornerShape(14.dp))
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "No external app widgets added yet.\nTap '+ ADD WIDGET' to host Calendar, Spotify, Weather, etc.",
-                                fontSize = 12.sp,
-                                color = MinimalGray,
-                                lineHeight = 18.sp
-                            )
-                        }
-                    }
-                } else {
-                    items(systemWidgetIds.toList()) { widgetId ->
-                        RabbitSystemWidgetHostItem(
-                            widgetId = widgetId,
-                            appWidgetManager = appWidgetManager,
-                            appWidgetHost = appWidgetHost,
-                            onDelete = { onDeleteSystemWidget(widgetId) }
-                        )
                     }
                 }
 
@@ -305,6 +311,17 @@ fun WidgetsDeckScreen(
                 letterSpacing = 1.sp,
                 color = MinimalRed,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+        }
+
+        if (showCustomPomodoroDialog) {
+            CustomPomodoroDurationDialog(
+                currentMinutes = pomodoroWorkDuration / 60,
+                onDismiss = { showCustomPomodoroDialog = false },
+                onSave = { mins ->
+                    PomodoroTimerManager.setWorkMinutes(mins)
+                    showCustomPomodoroDialog = false
+                }
             )
         }
     }
@@ -344,11 +361,11 @@ private fun RabbitNotesCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "NOTES STACK",
-                        fontSize = 11.sp,
+                        text = "notes",
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MinimalRed,
-                        letterSpacing = 1.sp
+                        color = MinimalWhite,
+                        letterSpacing = 0.5.sp
                     )
                 }
 
@@ -484,11 +501,11 @@ private fun RabbitTodoCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "FOCUS TASK STACK",
-                        fontSize = 11.sp,
+                        text = "to-dos",
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MinimalRed,
-                        letterSpacing = 1.sp
+                        color = MinimalWhite,
+                        letterSpacing = 0.5.sp
                     )
                 }
 
@@ -642,11 +659,11 @@ private fun RabbitCalendarCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "SCHEDULE & EVENTS",
-                        fontSize = 11.sp,
+                        text = "schedule",
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MinimalRed,
-                        letterSpacing = 1.sp
+                        color = MinimalWhite,
+                        letterSpacing = 0.5.sp
                     )
                 }
 
@@ -720,13 +737,17 @@ private fun RabbitPomodoroCard(
     seconds: Int,
     isRunning: Boolean,
     isBreak: Boolean,
+    workDuration: Int,
     onToggle: () -> Unit,
     onReset: () -> Unit,
-    onSwitchMode: (Boolean) -> Unit
+    onSwitchMode: (Boolean) -> Unit,
+    onSetDuration: (Int) -> Unit,
+    onOpenCustomDialog: () -> Unit
 ) {
     val mins = seconds / 60
     val secs = seconds % 60
     val timeFormatted = "%02d:%02d".format(mins, secs)
+    val workMins = workDuration / 60
 
     Box(
         modifier = Modifier
@@ -751,17 +772,19 @@ private fun RabbitPomodoroCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isBreak) "BREAK TIME" else "DEEP WORK POMODORO",
+                        text = if (isBreak) "break" else "pomodoro",
+                        fontFamily = AppleSanFranciscoFontFamily,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MinimalRed,
-                        letterSpacing = 1.sp
+                        color = MinimalWhite,
+                        letterSpacing = 0.5.sp
                     )
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "25m focus",
+                        text = "${workMins}m focus",
+                        fontFamily = AppleSanFranciscoFontFamily,
                         fontSize = 11.sp,
                         fontWeight = if (!isBreak) FontWeight.Bold else FontWeight.Normal,
                         color = if (!isBreak) MinimalWhite else MinimalGray,
@@ -769,6 +792,7 @@ private fun RabbitPomodoroCard(
                     )
                     Text(
                         text = "5m rest",
+                        fontFamily = AppleSanFranciscoFontFamily,
                         fontSize = 11.sp,
                         fontWeight = if (isBreak) FontWeight.Bold else FontWeight.Normal,
                         color = if (isBreak) MinimalWhite else MinimalGray,
@@ -777,7 +801,54 @@ private fun RabbitPomodoroCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Duration selector chips: 15m, 25m, 45m, 60m, custom
+            if (!isBreak) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(15, 25, 45, 60).forEach { presetMins ->
+                        val isCurrent = workMins == presetMins
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (isCurrent) MinimalRed else MinimalDarkCardBg)
+                                .border(1.dp, if (isCurrent) MinimalRed else MinimalDarkGray, RoundedCornerShape(6.dp))
+                                .clickable { onSetDuration(presetMins) }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "${presetMins}m",
+                                fontFamily = AppleSanFranciscoFontFamily,
+                                fontSize = 10.sp,
+                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                color = MinimalWhite
+                            )
+                        }
+                    }
+
+                    val isCustom = workMins !in listOf(15, 25, 45, 60)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isCustom) MinimalRed else MinimalDarkCardBg)
+                            .border(1.dp, if (isCustom) MinimalRed else MinimalDarkGray, RoundedCornerShape(6.dp))
+                            .clickable { onOpenCustomDialog() }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (isCustom) "${workMins}m custom" else "custom...",
+                            fontFamily = AppleSanFranciscoFontFamily,
+                            fontSize = 10.sp,
+                            fontWeight = if (isCustom) FontWeight.Bold else FontWeight.Normal,
+                            color = MinimalWhite
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -786,6 +857,7 @@ private fun RabbitPomodoroCard(
             ) {
                 Text(
                     text = timeFormatted,
+                    fontFamily = AppleSanFranciscoFontFamily,
                     fontSize = 44.sp,
                     fontWeight = FontWeight.Light,
                     color = MinimalWhite
@@ -860,11 +932,11 @@ private fun RabbitQuickTimersCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "ONE-TAP SYSTEM TIMERS",
-                    fontSize = 11.sp,
+                    text = "timers",
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MinimalRed,
-                    letterSpacing = 1.sp
+                    color = MinimalWhite,
+                    letterSpacing = 0.5.sp
                 )
             }
 
@@ -917,11 +989,11 @@ private fun RabbitSystemWidgetsHeader(onAddWidget: () -> Unit) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "SYSTEM & APP WIDGETS",
-                fontSize = 11.sp,
+                text = "widgets",
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = MinimalRed,
-                letterSpacing = 1.sp
+                color = MinimalWhite,
+                letterSpacing = 0.5.sp
             )
         }
 

@@ -9,31 +9,20 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val MinimalColorScheme = darkColorScheme(
-    primary = MinimalRed,
-    onPrimary = MinimalWhite,
-    secondary = MinimalDarkGray,
-    onSecondary = MinimalWhite,
-    tertiary = MinimalGray,
-    background = MinimalBlack,
-    onBackground = MinimalWhite,
-    surface = MinimalCardBg,
-    onSurface = MinimalWhite,
-    surfaceVariant = MinimalDarkGray,
-    onSurfaceVariant = MinimalGray,
-    outline = MinimalDarkGray,
-    error = MinimalRed,
-    onError = MinimalWhite,
-)
-
 @Composable
-fun MinimalOSTheme(content: @Composable () -> Unit) {
+fun MinimalOSTheme(
+    themeId: String = "AMOLED_RED",
+    content: @Composable () -> Unit
+) {
+    // Update active theme state
+    currentActiveTheme = MinimalThemeRegistry.getTheme(themeId)
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = MinimalBlack.toArgb()
-            window.navigationBarColor = MinimalBlack.toArgb()
+            window.statusBarColor = currentActiveTheme.background.toArgb()
+            window.navigationBarColor = currentActiveTheme.background.toArgb()
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = false
                 isAppearanceLightNavigationBars = false
@@ -41,8 +30,25 @@ fun MinimalOSTheme(content: @Composable () -> Unit) {
         }
     }
 
+    val colorScheme = darkColorScheme(
+        primary = currentActiveTheme.accent,
+        onPrimary = currentActiveTheme.textPrimary,
+        secondary = currentActiveTheme.border,
+        onSecondary = currentActiveTheme.textPrimary,
+        tertiary = currentActiveTheme.textSecondary,
+        background = currentActiveTheme.background,
+        onBackground = currentActiveTheme.textPrimary,
+        surface = currentActiveTheme.card,
+        onSurface = currentActiveTheme.textPrimary,
+        surfaceVariant = currentActiveTheme.border,
+        onSurfaceVariant = currentActiveTheme.textSecondary,
+        outline = currentActiveTheme.border,
+        error = currentActiveTheme.accent,
+        onError = currentActiveTheme.textPrimary,
+    )
+
     MaterialTheme(
-        colorScheme = MinimalColorScheme,
+        colorScheme = colorScheme,
         typography = MinimalTypography,
         content = content
     )
