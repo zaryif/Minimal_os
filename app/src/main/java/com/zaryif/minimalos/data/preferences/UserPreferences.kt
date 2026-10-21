@@ -50,7 +50,10 @@ class UserPreferences(private val context: Context) {
     }
 
     val onboardingCompleted: Flow<Boolean> = context.dataStore.data
-        .map { prefs -> prefs[ONBOARDING_COMPLETED] ?: false }
+        .map { prefs ->
+            prefs[ONBOARDING_COMPLETED]
+                ?: (prefs[FAVORITE_APPS]?.isNotEmpty() == true || prefs[CUSTOM_WALLPAPER_URI] != null)
+        }
 
     val aiProvider: Flow<AiProvider> = context.dataStore.data
         .map { prefs ->

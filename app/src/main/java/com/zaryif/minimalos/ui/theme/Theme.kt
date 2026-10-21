@@ -7,6 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -25,8 +26,11 @@ fun MinimalOSTheme(
     themeId: String = "RABBIT_ORANGE",
     content: @Composable () -> Unit
 ) {
-    // Update active theme state
-    currentActiveTheme = MinimalThemeRegistry.getTheme(themeId)
+    // Update active theme state only when changed
+    val theme = remember(themeId) { MinimalThemeRegistry.getTheme(themeId) }
+    if (currentActiveTheme.id != theme.id) {
+        currentActiveTheme = theme
+    }
 
     val view = LocalView.current
     if (!view.isInEditMode) {

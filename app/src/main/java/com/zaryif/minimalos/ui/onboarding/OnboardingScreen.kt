@@ -65,29 +65,62 @@ fun OnboardingScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MinimalBlack)
-            .padding(horizontal = 24.dp, vertical = 32.dp)
+            .padding(horizontal = 24.dp, vertical = 24.dp)
     ) {
-        AnimatedContent(
-            targetState = currentStep,
-            transitionSpec = {
-                if (targetState > initialState) {
-                    slideInHorizontally { width -> width } togetherWith slideOutHorizontally { width -> -width }
-                } else {
-                    slideInHorizontally { width -> -width } togetherWith slideOutHorizontally { width -> width }
-                }
-            },
-            label = "OnboardingSteps"
-        ) { step ->
-            when (step) {
-                0 -> StepYourApps(onNext = { currentStep = 1 })
-                1 -> StepTypeToDoThings(onNext = { currentStep = 2 })
-                2 -> StepHub(onNext = { currentStep = 3 })
-                3 -> StepDeck(onNext = { currentStep = 4 })
-                4 -> StepRestrictions(
-                    selectedMode = selectedMode,
-                    onSelectMode = { selectedMode = it },
-                    onFinish = { onFinish(selectedMode) }
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Header with Step indicator and Skip button
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "STEP ${currentStep + 1} OF 5",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MinimalGray,
+                    letterSpacing = 1.sp,
+                    fontFamily = AppleSanFranciscoFontFamily
                 )
+                Text(
+                    text = "SKIP ➔",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MinimalRed,
+                    letterSpacing = 0.5.sp,
+                    fontFamily = AppleSanFranciscoFontFamily,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable { onFinish(RestrictionMode.UNRESTRICTED) }
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+
+            AnimatedContent(
+                targetState = currentStep,
+                modifier = Modifier.weight(1f),
+                transitionSpec = {
+                    if (targetState > initialState) {
+                        slideInHorizontally { width -> width } togetherWith slideOutHorizontally { width -> -width }
+                    } else {
+                        slideInHorizontally { width -> -width } togetherWith slideOutHorizontally { width -> width }
+                    }
+                },
+                label = "OnboardingSteps"
+            ) { step ->
+                when (step) {
+                    0 -> StepYourApps(onNext = { currentStep = 1 })
+                    1 -> StepTypeToDoThings(onNext = { currentStep = 2 })
+                    2 -> StepHub(onNext = { currentStep = 3 })
+                    3 -> StepDeck(onNext = { currentStep = 4 })
+                    4 -> StepRestrictions(
+                        selectedMode = selectedMode,
+                        onSelectMode = { selectedMode = it },
+                        onFinish = { onFinish(selectedMode) }
+                    )
+                }
             }
         }
     }

@@ -208,12 +208,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        appWidgetHost.startListening()
+        try {
+            appWidgetHost.startListening()
+        } catch (_: Exception) {}
     }
 
     override fun onStop() {
         super.onStop()
-        appWidgetHost.stopListening()
+        try {
+            appWidgetHost.stopListening()
+        } catch (_: Exception) {}
     }
 }
 
@@ -244,8 +248,11 @@ fun MinimalAppContent(
     var showMemoSheet by remember { mutableStateOf(false) }
     var showClockSheet by remember { mutableStateOf(false) }
 
-    // Android back button handling returns to Home screen
-    BackHandler(enabled = currentScreen != ScreenState.HOME && currentScreen != ScreenState.ONBOARDING) {
+    // Android back button handling returns to Home screen (or finishes onboarding)
+    BackHandler(enabled = currentScreen != ScreenState.HOME) {
+        if (currentScreen == ScreenState.ONBOARDING) {
+            scope.launch { userPreferences.setOnboardingCompleted(true) }
+        }
         currentScreen = ScreenState.HOME
     }
 
