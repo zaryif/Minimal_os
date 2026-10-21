@@ -1,91 +1,204 @@
 # 📱 Minimal OS Launcher
 
-[![Build Minimal OS Launcher APK](https://github.com/zaryif/Minimal_os/actions/workflows/build.yml/badge.svg)](https://github.com/zaryif/Minimal_os/actions/workflows/build.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)](LICENSE)
-[![Android](https://img.shields.io/badge/Android-8.0%2B-black.svg?logo=android)](https://www.android.com)
+<div align="center">
 
-> A distraction-free, text-first Android home launcher inspired by the **Minimal Phone** design paradigm with full terminal-like symbol capability (T-UI style).
->
-> **Type to do things. One hub for everything. Zero visual noise.**
+[![Build Minimal OS Launcher APK](https://github.com/zaryif/Minimal_os/actions/workflows/build.yml/badge.svg)](https://github.com/zaryif/Minimal_os/actions/workflows/build.yml)
+[![Latest Release](https://img.shields.io/github/v/release/zaryif/Minimal_os?color=red&label=release)](https://github.com/zaryif/Minimal_os/releases/latest)
+[![Android](https://img.shields.io/badge/Android-8.0%20to%2015-black.svg?logo=android)](https://www.android.com)
+[![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4.svg?logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.0+-7F52FF.svg?logo=kotlin)](https://kotlinlang.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)](LICENSE)
+
+**An intentional, text-first, terminal-inspired Android home launcher designed to reclaim your attention.**
+
+*Type to do things. One hub for everything. Zero visual noise.*
+
+[Download Latest APK (v1.7.1)](https://github.com/zaryif/Minimal_os/releases/latest) • [Features](#-core-features) • [Inspiration & Vision](#-what-inspired-it) • [What It Solves](#-what-problem-is-it-solving) • [Installation](#-installation--setup)
+
+</div>
 
 ---
 
-## 📸 Screenshots
+## 📸 Visual Overview
 
-| 1. Your Apps | 2. Minimal Ask | 3. Type to do things | 4. Hub | 5. Restrictions |
+| 1. Your Apps | 2. Minimal Ask | 3. Command Bar | 4. Notification Hub | 5. Restrictions |
 |:---:|:---:|:---:|:---:|:---:|
 | <img src="screenshot/03F4F184-35F3-430D-B353-1B753FA0892A.PNG" width="160"/> | <img src="screenshot/07A9A71C-F7E4-40D7-B216-357554EE58A8.PNG" width="160"/> | <img src="screenshot/16F82F2C-C4CD-488A-9C0D-A311AE745880.PNG" width="160"/> | <img src="screenshot/227BA325-9E2F-48AD-A9B7-CA84D707FA01.PNG" width="160"/> | <img src="screenshot/443F9313-5212-4D83-AC25-90ECE083B0E2.PNG" width="160"/> |
 
 ---
 
+## 💡 What Inspired It
+
+Modern smartphones were originally conceived as personal assistants—sharp, responsive instruments to help humans communicate, navigate, and create. Over the last decade, however, the industry transformed our home screens into brightly saturated slot machines engineered by attention merchants to trigger impulsive taps and endless algorithmic scrolling.
+
+**Minimal OS Launcher** was born at the intersection of three distinct design movements:
+
+1. **The Minimal Phone Paradigm**:
+   Embracing typography-first minimalism, anti-dopamine layouts, and e-ink aesthetic clarity. High contrast, sharp text, and zero distracting app badges.
+2. **Teenage Engineering & Rabbit r1 Industrial Hardware Aesthetic**:
+   Tactile, card-based retro-futuristic interfaces. Bold contrast borders, segmented micro-cards, dedicated deck drawers, and crisp mechanical visual hierarchy.
+3. **Terminal Shells & T-UI Efficiency**:
+   Power users love command-line shells (Bash, Zsh) because typing commands is demonstrably faster than hunting through nested graphical menus. Minimal OS translates this command-line power to touchscreens with dedicated trigger symbols (`-`, `!`, `#`, `@`, `:`, `+`, `*`, `?`), custom shortcut aliases (`yt`, `gh`, `wifi`), and bash-like command history navigation.
+
+---
+
+## 🎯 What Problem Is It Solving?
+
+### 1. The Dopamine Trap of App Grids
+Traditional Android home screens blast you with colorful app icons that trigger neurological dopamine loops. You unlock your phone intending to check an email or set a timer, but notice an Instagram or YouTube icon and lose thirty minutes. **Minimal OS strips away all iconography on the home screen**, replacing apps with clean, neutral typography that requires conscious intent to open.
+
+### 2. High Friction in Mundane Daily Actions
+To take a note, set an alarm for 7:30 AM, start a 25-minute Pomodoro timer, or text your mom, traditional OS launchers force you to find an app icon, tap it, wait for splash screens, navigate internal tabs, and execute. **In Minimal OS, the Command Bar executes all of this from one line on your home screen in under two seconds.**
+
+### 3. The "Dumb Phone" Impasse
+Many people want digital detox and try purchasing hardware "dumb phones" (feature phones or e-ink phones), only to abandon them within weeks because real life requires modern tools: banking apps, WhatsApp, ride-sharing (Uber/Lyft), 2-factor authentication, music streaming (Spotify), and GPS maps. **Minimal OS turns your existing Android device into a software-defined dumb phone**: total psychological calm without sacrificing a single critical Android application.
+
+### 4. Poor Legibility & The White-on-White Contrast Dilemma
+Many monochrome or minimalist launchers suffer from contrast failures where white accents cause invisible white text on bright elements. **Minimal OS v1.7.1 introduces the `MinimalOnAccent` adaptive luminance engine**, ensuring that whether you run pure *AMOLED Crimson* or blindingly pure *Nordic Snow*, text, badges, checkboxes, and interactive buttons automatically switch between crisp pure black (`#000000`) and brilliant white (`#FFFFFF`) for flawless WCAG AAA legibility.
+
+---
+
 ## ✨ Core Features
 
-### ⌨️ 1. Type to Do Things (Command Bar)
-From your home screen, a symbol and a line is the whole job. Nothing to open, nowhere to navigate:
+### ⌨️ 1. Type to Do Things (The Command Bar)
 
-| Symbol | Command | Example | What Happens |
+The Command Bar is the brain of Minimal OS. It combines instant app search, contact dialing, system utility shortcuts, natural-language actions, and user-defined aliases in one unified input bar.
+
+```
+Type symbol + text  ➔  Instant execution
+```
+
+| Symbol / Command | Action | Example | Result |
 |:---:|:---|:---|:---|
-| `@` | **message** | `@Mom dinner at 7` | Opens SMS composer pre-filled |
-| `#` | **call** | `#+1234567890` | Dials number or contact |
-| `-` | **to-do** | `-buy groceries` | Adds item to Minimal Memo todo list |
-| `!` | **note** | `!project ideas...` | Adds note into Minimal Memo |
-| `*` | **event** | `*team sync tomorrow` | Opens calendar event creation |
-| `+` | **timer** | `+10m` | Sets a 10-minute countdown timer |
-| `:` | **alarm** | `:7:00am` | Sets alarm for 7:00 AM |
-| `?` | **ask** | `?weather forecast` | Fast web query without navigating |
-| _(none)_ | **search apps** | `spotify` | Real-time app search & instant launch |
+| `@` or `sms` | **Direct SMS** | `@Mom on my way home` | Opens system SMS composer pre-filled to contact |
+| `#` or `call` | **Quick Call** | `#Alex` or `#+1234567890` | Instantly dials contact or raw phone number |
+| `-` | **To-Do Item** | `-Buy milk and coffee` | Immediately adds item to your Minimal Memo to-do list |
+| `!` | **Memo / Note** | `!Meeting ideas for Monday` | Saves scratch note into Minimal Memo storage |
+| `*` | **Calendar Event** | `*Flight to Tokyo tomorrow` | Launches calendar intent with pre-filled title |
+| `+` | **Timer** | `+15m` or `+45s` | Starts a system countdown timer immediately |
+| `:` or `alarm` | **Alarm** | `:7:00 AM` or `alarm 8:30am` | Configures system clock alarm for specified time |
+| `?` or `ask` | **Minimal Ask** | `?capital of iceland` | Fast distraction-free web search without browser tabs |
+| `alias` | **Custom Shortcuts**| `yt lofi beats` or `gh notifications` | Runs custom user-defined keywords (URLs, apps, or settings) |
+| _(text)_ | **Fuzzy App Search** | `spot` | Real-time app search with instant keyboard launch |
+
+#### 🚀 Terminal Power Features:
+- **Terminal Command History**: Press the `▲` (Up) and `▼` (Down) history controls right beside the input bar to recall and cycle through your previous commands, exactly like a Linux/macOS shell.
+- **Dynamic Action Badges**: As soon as you type an action trigger (like `-` for to-do or `#` for call), a glowing theme-colored pill badge (`TODO`, `NOTE`, `CALL`, `TIMER`, `ALIAS`, `APP`) lights up to confirm the action before you press enter.
+- **Smart Contact Search**: Search your address book with fuzzy matching and inline permission grant fallbacks.
 
 ---
 
-### 📬 2. Unified Hub (One Swipe Right)
-Messages, calls, mail, and app alerts in one list, so there is one place to look rather than nine.
-- **Tabs:** `ALL` · `MESSAGE` · `CALLS` · `EMAIL` · `APPS` · `FLAGGED`
-- Red accent indicator, relative timestamps (`now`, `5m`, `1h`), and tap to open.
-- Swipe left to return to Home.
+### 🗂️ 2. The Widgets Deck Screen (Dedicated Utilities Hub)
+
+Swipe or tap into the **Widgets Deck** to access purpose-built, high-contrast utility cards inspired by retro-futuristic hardware:
+
+- ⏱️ **Live Pomodoro Focus Card**: Built-in 15m, 25m, 45m, and 60m focus chips, custom duration picker dialog, work/break cycle tracker, and tactile play/pause/reset controls.
+- ⏰ **Integrated Alarms Widget**: One-tap quick presets (`+30m`, `+1h`, `7:00 AM`, `8:00 AM`) plus an inline natural-language text field to set system alarms without ever opening the Clock app.
+- ⚡ **Aliases & Shortcuts Deck**: Quick template creator and 1-tap launcher for your custom shortcuts (e.g. `yt` ➔ YouTube, `wifi` ➔ Network Settings, `gh` ➔ GitHub).
+- 📝 **Minimal To-Dos & Notes Deck**: Interactive checkboxes to complete tasks on the fly, quick inline note creation, and clean strikethrough state management.
+- ⏲️ **Countdown Timers**: Quick-tap timer presets (`1m`, `5m`, `10m`, `15m`, `25m`) that trigger native Android alarms.
+- 🧩 **Native App Widget Host**: Pin any standard Android app widget (Spotify, Google Keep, Weather) directly into the Minimal OS card system.
 
 ---
 
-### 🛡️ 3. Restriction Modes
-Set up your digital diet to eliminate mindless phone habits:
-- **Monk Mode:** Essentials only, grayscale always.
-- **Focus Mode:** Everything available, distracting apps on a clock.
-- **Unrestricted:** Everything, no guardrails.
+### 📬 3. Unified Notification Hub (Swipe Right)
+
+Stop hopping between 10 different notification shades and apps. The Hub aggregates notifications into a clean, unified stream:
+- **Category Tabs**: Filter by `ALL`, `MESSAGE`, `CALLS`, `EMAIL`, `APPS`, and `FLAGGED`.
+- **Minimalist Metadata**: Clean typography, relative timestamps (`now`, `5m`, `2h`), and direct 1-tap interaction.
+- **Privacy-Minded**: Runs completely locally on your device via Android's `NotificationListenerService`.
 
 ---
 
-### 🧰 4. Built-in Minimal Mini Apps
-- **Minimal Settings:** Configure restrictions, remap symbols, set default launcher.
-- **Minimal Ask:** Distraction-free query assistant.
-- **Minimal Clock:** Clean typography clock, date, and quick timer/alarm shortcuts.
-- **Minimal Memo:** Fast scratchpad with to-do checkmarks and notes.
+### 🛡️ 4. Digital Diet & Restriction Modes
+
+Take back control of your screen time with hardware-like restriction profiles:
+- **Monk Mode**: Ultra-restricted. Only essential phone tools, SMS, and clock are accessible. Eliminates distraction at the root.
+- **Focus Mode**: Work mode. Distracting apps are restricted or placed on timed timers.
+- **Unrestricted Mode**: All apps accessible when you need full freedom.
 
 ---
 
-## 📥 Download APK
+### 🎨 5. Handcrafted Theme Engine & Adaptive Contrast
 
-**⭐ [Download Latest Stable APK (v1.6.0)](https://github.com/zaryif/Minimal_os/releases/download/v1.6.0/MinimalOS-v1.6.0.apk)**
+Minimal OS includes 7 bespoke, high-contrast themes tailored for AMOLED displays, daylight readability, and aesthetic pleasure:
 
-You can also browse all builds directly from:
-- **[GitHub Latest Release](https://github.com/zaryif/Minimal_os/releases/latest)** (Recommended)
-- **[GitHub Actions Artifacts](https://github.com/zaryif/Minimal_os/actions)** (Automated latest build)
+| Theme Name | Dominant Palette | Accent Color | Ideal Use Case |
+|:---|:---|:---|:---|
+| **AMOLED Crimson** | Pure Pitch Black (`#000000`) | Crimson Red (`#FF3B30`) | Maximum battery saving & classic Minimal OS look |
+| **Apple Space Gray** | Deep Charcoal (`#141416`) | Electric Blue (`#0A84FF`) | Sleek, modern iOS/macOS pro look |
+| **Nordic Snow** | Pure Contrast Black & Crisp White | Pure White (`#FFFFFF`) | Extreme monochrome minimalism with black-on-white text |
+| **Rabbit Amber** | Warm Dark Zinc (`#0D0D0F`) | Industrial Orange (`#FF5722`) | Teenage Engineering & Rabbit r1 tribute |
+| **Matrix Forest** | Deep Emerald (`#070E0A`) | Terminal Green (`#10B981`) | Cyberpunk & hacker terminal aesthetic |
+| **Midnight Obsidian**| Deep Space Navy (`#060913`) | Glacier Sky (`#38BDF8`) | Calming night-time low-light readability |
+| **Titanium Purple** | Shadow Violet (`#0A0714`) | Electric Violet (`#A855F7`) | Rich, vibrant dark mode aesthetic |
 
----
-
-## 🛠️ Tech Stack & Architecture
-
-- **Language:** Kotlin 2.0+
-- **UI:** Jetpack Compose (Material3)
-- **Architecture:** MVVM + Clean Architecture
-- **Storage:** Android DataStore Preferences + SharedPreferences JSON
-- **System Services:** `NotificationListenerService`, `PackageManager`, `AlarmClock`, `CalendarContract`
-- **Target SDK:** 35 (Android 15)
-- **Minimum SDK:** 26 (Android 8.0 Oreo)
+> **Adaptive Legibility (`MinimalOnAccent`)**: Minimal OS automatically calculates background luminance. On pure white accent buttons (Nordic Snow), text and icons dynamically render in sharp pure black (`#000000`), guaranteeing zero white-on-white visibility bugs.
 
 ---
 
-## 📖 Specifications & Architecture Documents
+## 🤖 Android System Integration
 
-Full documentation suite available in the [`docs/`](docs/) directory:
+Minimal OS is engineered specifically for Android to feel like an integral part of the operating system:
+
+- **Target SDK 35 (Android 15)** & Backward Compatible to **Android 8.0 (Oreo, API 26)**.
+- **System Alarm & Timer Integration**: Seamlessly dispatches intents to `AlarmClock.ACTION_SET_ALARM` and `AlarmClock.ACTION_SET_TIMER`.
+- **System Calendar Intent**: Direct mapping to `CalendarContract.ACTION_INSERT`.
+- **Telephony & SMS Intents**: Direct integration with default dialers and SMS apps via `Intent.ACTION_CALL`, `Intent.ACTION_DIAL`, and `Intent.ACTION_SENDTO`.
+- **Native Widget Host**: Uses Android `AppWidgetManager` and `AppWidgetHost` to embed third-party widgets cleanly.
+- **Zero Cloud Dependence**: 100% of your notes, todos, settings, aliases, and history remain strictly on your device in secure local DataStore storage. **No account required, no telemetry, no analytics, no ads.**
+
+---
+
+## 📥 Installation & Setup
+
+### Download APK
+Grab the latest release directly from GitHub:
+
+📦 **[Download Minimal OS Launcher v1.7.1 APK](https://github.com/zaryif/Minimal_os/releases/latest)**
+
+### Setting as Default Launcher
+1. Install the downloaded `.apk` file (enable *"Install from unknown sources"* if prompted).
+2. Press your phone's **Home** button or swipe up to go home.
+3. When prompted, select **Minimal OS** and tap **"Always"**.
+4. *(Alternatively)* Go to Android **Settings ➔ Apps ➔ Default Apps ➔ Home App ➔ Minimal OS**.
+
+---
+
+## 🛠️ Architecture & Tech Stack
+
+```
+com.zaryif.minimalos
+├── data
+│   ├── model          # Note, Todo, Notification, App, Theme models
+│   ├── preferences    # Jetpack DataStore preferences (Theme, Restrictions, Aliases)
+│   ├── repository     # StorageRepository, ContactRepository, NotificationRepository
+│   └── service        # NotificationListenerService
+├── domain
+│   ├── parser         # CommandParser (Symbol & natural-language parsing)
+│   ├── timer          # PomodoroTimerManager
+│   └── usecase        # ExecuteCommandUseCase
+└── ui
+    ├── apps           # AppDrawerScreen
+    ├── components     # CommandBar, MinimalCard, MinimalMemoSheet, Dialogs
+    ├── home           # HomeScreen & Home Widgets
+    ├── onboarding     # OnboardingScreen
+    ├── settings       # SettingsScreen (organized by top-brand guidelines)
+    ├── theme          # Adaptive Theme, Color, Type (San Francisco)
+    └── widgets        # WidgetsDeckScreen (Pomodoro, Alarms, Aliases, Timers)
+```
+
+- **Language**: Kotlin 2.0+
+- **UI Framework**: Jetpack Compose (Material3)
+- **Asynchronous Flow**: Kotlin Coroutines & `StateFlow` / `SharedFlow`
+- **Preferences**: Jetpack DataStore
+- **Build System**: Gradle Kotlin DSL (`build.gradle.kts`)
+
+---
+
+## 📖 Documentation Suite
+
+Comprehensive architecture and design documentation is available in the [`docs/`](docs/) directory:
 - [Business Requirements Document (BRD)](docs/BRD.md)
 - [Software Requirements Specification (SRS)](docs/SRS.md)
 - [Software Architecture Document (SAD)](docs/SAD.md)
@@ -97,4 +210,5 @@ Full documentation suite available in the [`docs/`](docs/) directory:
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
-Created with ❤️ by **MD. Zarif Azfar** ([@zaryif](https://github.com/zaryif)).
+
+Developed with ❤️ by **MD. Zarif Azfar** ([@zaryif](https://github.com/zaryif)).
