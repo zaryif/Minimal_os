@@ -47,6 +47,7 @@ import com.zaryif.minimalos.ui.theme.MinimalDarkGray
 import com.zaryif.minimalos.ui.theme.MinimalGray
 import com.zaryif.minimalos.ui.theme.MinimalRed
 import com.zaryif.minimalos.ui.theme.MinimalWhite
+import com.zaryif.minimalos.ui.theme.MinimalOnAccent
 
 @Composable
 fun CustomPomodoroDurationDialog(
@@ -150,7 +151,7 @@ fun CustomPomodoroDurationDialog(
                                 text = "${min}m",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = MinimalWhite
+                                color = if (textInput == min.toString()) MinimalOnAccent else MinimalWhite
                             )
                         }
                     }
@@ -175,7 +176,7 @@ fun CustomPomodoroDurationDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = MinimalRed),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text(text = "set timer", color = MinimalWhite, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "set timer", color = MinimalOnAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

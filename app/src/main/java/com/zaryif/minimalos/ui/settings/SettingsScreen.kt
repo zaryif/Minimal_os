@@ -102,6 +102,7 @@ import com.zaryif.minimalos.ui.theme.MinimalGray
 import com.zaryif.minimalos.ui.theme.MinimalRed
 import com.zaryif.minimalos.ui.theme.MinimalThemeRegistry
 import com.zaryif.minimalos.ui.theme.MinimalWhite
+import com.zaryif.minimalos.ui.theme.MinimalOnAccent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
@@ -501,7 +502,7 @@ fun SettingsScreen(
                                             text = presetName,
                                             fontSize = 9.sp,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                            color = MinimalWhite
+                                            color = if (isSelected) MinimalOnAccent else MinimalWhite
                                         )
                                     }
                                 }
@@ -966,7 +967,7 @@ fun SettingsScreen(
                                         .clickable { showAddCommandModal = true }
                                         .padding(horizontal = 8.dp, vertical = 4.dp)
                                 ) {
-                                    Text(text = "+ ADD", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MinimalWhite)
+                                    Text(text = "+ ADD", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MinimalOnAccent)
                                 }
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Icon(
@@ -1156,7 +1157,7 @@ fun SettingsScreen(
                                             Icon(
                                                 imageVector = Icons.Default.Check,
                                                 contentDescription = null,
-                                                tint = MinimalWhite,
+                                                tint = MinimalOnAccent,
                                                 modifier = Modifier.size(13.dp)
                                             )
                                         }
@@ -1404,7 +1405,7 @@ fun SettingsScreen(
                                             Icon(
                                                 imageVector = Icons.Default.Check,
                                                 contentDescription = null,
-                                                tint = MinimalWhite,
+                                                tint = MinimalOnAccent,
                                                 modifier = Modifier.size(14.dp)
                                             )
                                         }
@@ -1435,7 +1436,7 @@ fun SettingsScreen(
                                 text = "DONE",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = MinimalWhite
+                                color = MinimalOnAccent
                             )
                         }
                     }
@@ -1573,7 +1574,7 @@ fun SettingsScreen(
                                 .padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(text = "SAVE COMMAND", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MinimalWhite)
+                            Text(text = "SAVE COMMAND", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (newKeyword.isNotBlank() && newTarget.isNotBlank()) MinimalOnAccent else MinimalWhite)
                         }
                     }
                 }

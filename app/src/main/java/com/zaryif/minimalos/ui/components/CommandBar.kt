@@ -69,6 +69,7 @@ import com.zaryif.minimalos.ui.theme.MinimalDarkGray
 import com.zaryif.minimalos.ui.theme.MinimalGray
 import com.zaryif.minimalos.ui.theme.MinimalRed
 import com.zaryif.minimalos.ui.theme.MinimalWhite
+import com.zaryif.minimalos.ui.theme.MinimalOnAccent
 
 @Composable
 fun CommandBar(
@@ -224,7 +225,7 @@ fun CommandBar(
                                 text = "GRANT",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = MinimalWhite
+                                color = MinimalOnAccent
                             )
                         }
                     }
@@ -452,7 +453,7 @@ fun CommandBar(
                             text = badgeText,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MinimalWhite
+                            color = MinimalOnAccent
                         )
                     }
                     Spacer(modifier = Modifier.width(6.dp))

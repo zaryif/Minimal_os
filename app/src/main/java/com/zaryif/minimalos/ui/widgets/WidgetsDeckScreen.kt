@@ -90,6 +90,7 @@ import com.zaryif.minimalos.domain.timer.PomodoroTimerManager
 import com.zaryif.minimalos.ui.components.CustomPomodoroDurationDialog
 import com.zaryif.minimalos.ui.theme.AppleSanFranciscoFontFamily
 import com.zaryif.minimalos.ui.theme.MinimalWhite
+import com.zaryif.minimalos.ui.theme.MinimalOnAccent
 import androidx.compose.ui.window.Dialog
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -646,7 +647,7 @@ private fun RabbitTodoCard(
                                 Icon(
                                     imageVector = Icons.Default.Check,
                                     contentDescription = null,
-                                    tint = MinimalWhite,
+                                    tint = MinimalOnAccent,
                                     modifier = Modifier.size(12.dp)
                                 )
                             }
@@ -881,7 +882,7 @@ private fun RabbitPomodoroCard(
                                 fontFamily = AppleSanFranciscoFontFamily,
                                 fontSize = 10.sp,
                                 fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                                color = MinimalWhite
+                                color = if (isCurrent) MinimalOnAccent else MinimalWhite
                             )
                         }
                     }
@@ -900,7 +901,7 @@ private fun RabbitPomodoroCard(
                             fontFamily = AppleSanFranciscoFontFamily,
                             fontSize = 10.sp,
                             fontWeight = if (isCustom) FontWeight.Bold else FontWeight.Normal,
-                            color = MinimalWhite
+                            color = if (isCustom) MinimalOnAccent else MinimalWhite
                         )
                     }
                 }
@@ -947,7 +948,7 @@ private fun RabbitPomodoroCard(
                         Icon(
                             imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (isRunning) "Pause" else "Start",
-                            tint = MinimalWhite,
+                            tint = MinimalOnAccent,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -1219,7 +1220,7 @@ private fun RabbitAliasesWidgetCard(
                             text = if (showAddRow) "CANCEL" else "+ ADD ALIAS",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MinimalWhite
+                            color = if (showAddRow) MinimalWhite else MinimalOnAccent
                         )
                     }
                 }
@@ -1316,7 +1317,7 @@ private fun RabbitAliasesWidgetCard(
                                 text = "SAVE ALIAS",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = MinimalWhite
+                                color = if (aliasKeyword.isNotBlank() && aliasTarget.isNotBlank()) MinimalOnAccent else MinimalWhite
                             )
                         }
                     }
@@ -1531,7 +1532,7 @@ private fun RabbitSystemWidgetsHeader(onAddWidget: () -> Unit) {
                 text = "+ ADD WIDGET",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = MinimalWhite
+                color = MinimalOnAccent
             )
         }
     }

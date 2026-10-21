@@ -47,6 +47,7 @@ import com.zaryif.minimalos.ui.theme.MinimalDarkGray
 import com.zaryif.minimalos.ui.theme.MinimalGray
 import com.zaryif.minimalos.ui.theme.MinimalRed
 import com.zaryif.minimalos.ui.theme.MinimalWhite
+import com.zaryif.minimalos.ui.theme.MinimalOnAccent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -151,7 +152,7 @@ fun MinimalMemoSheet(
                                         Icon(
                                             imageVector = Icons.Default.Check,
                                             contentDescription = null,
-                                            tint = MinimalWhite,
+                                            tint = MinimalOnAccent,
                                             modifier = Modifier.size(14.dp)
                                         )
                                     }
