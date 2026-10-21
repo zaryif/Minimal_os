@@ -79,6 +79,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     installedApps: List<AppInfo>,
@@ -638,11 +639,12 @@ fun SettingsScreen(
                     color = MinimalGray
                 )
             } else {
-                Row(
+                androidx.compose.foundation.layout.FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    favoriteAppsList.take(5).forEach { app ->
+                    favoriteAppsList.forEach { app ->
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
