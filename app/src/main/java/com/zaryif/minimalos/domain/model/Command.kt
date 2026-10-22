@@ -12,6 +12,9 @@ enum class CommandType(val symbol: Char, val displayName: String) {
     ASK('?', "ask"),
     DRIVE('^', "drive"),
     EMAIL('&', "email"),
+    YOUTUBE('$', "youtube"),
+    POMODORO('%', "pomodoro"),
+    UNINSTALL('/', "uninstall"),
     HELP('~', "help"),
     SEARCH('\u0000', "search");
 

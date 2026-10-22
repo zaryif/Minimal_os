@@ -120,8 +120,8 @@ fun CommandHelpDialog(
                         Text(
                             text = "The command box is an intelligent unified terminal for your phone. When you type, it evaluates input in order:\n" +
                                     "1. Custom Aliases (e.g. 'yt', 'wifi', 'gh')\n" +
-                                    "2. Direct Symbols ('-', '!', '*', '+', ':', '@', '#', '?', '^', '&')\n" +
-                                    "3. Natural Language ('set alarm 7am', 'timer 10m', 'todo buy milk')\n" +
+                                    "2. Direct Symbols ('-', '!', '*', '+', ':', '@', '#', '?', '^', '&', '$', '%', '/')\n" +
+                                    "3. Natural Language ('uninstall chatgpt', 'pomo 50m', 'yt lofi', 'set alarm 7am')\n" +
                                     "4. App Launcher (matching installed apps)\n" +
                                     "5. Seamless Web Search (searches Google automatically)",
                             fontSize = 12.sp,
@@ -143,6 +143,10 @@ fun CommandHelpDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val commands = listOf(
+                    Triple("uninstall or /", "uninstall chatgpt", "Uninstalls app via system confirmation dialog"),
+                    Triple("yt or $", "yt lofi beats", "Directly searches in YouTube app or web"),
+                    Triple("pomo or %", "pomo 50m", "Starts live home screen Pomodoro countdown timer"),
+                    Triple("assistant or ?", "assistant what is gravity", "Direct query to your AI Assistant (Gemini/ChatGPT/Claude)"),
                     Triple("- or todo", "- Buy coffee beans", "Adds a focus task to your To-Do list"),
                     Triple("! or note", "! Great app idea here", "Saves a quick note to Minimal Memo"),
                     Triple("* or event", "* Lunch with Sarah tomorrow 1pm", "Creates calendar event without opening app"),
@@ -150,7 +154,6 @@ fun CommandHelpDialog(
                     Triple(": or alarm", ": 7:30 AM", "Sets clock alarm for tomorrow morning"),
                     Triple("@ or msg", "@ Alex running 5 mins late", "Directly opens SMS compose to contact"),
                     Triple("# or call", "# John Doe", "Dials phone number or contact immediately"),
-                    Triple("? or ask", "? what is quantum computing", "Direct query to Google Gemini / AI Assistant"),
                     Triple("& or email", "& team@minimal.io weekly sync", "Composes an email"),
                     Triple("^ or drive", "^ pitch deck", "Searches Google Drive files"),
                     Triple("help", "help", "Opens this guide anytime"),

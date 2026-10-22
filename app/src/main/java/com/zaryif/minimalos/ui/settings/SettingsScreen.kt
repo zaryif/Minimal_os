@@ -110,7 +110,11 @@ import com.zaryif.minimalos.ui.theme.MinimalWhite
 import com.zaryif.minimalos.ui.theme.MinimalOnAccent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -134,6 +138,7 @@ fun SettingsScreen(
     val deckWidgetsOrder by userPreferences.deckWidgetsOrder.collectAsState(initial = UserPreferences.DEFAULT_DECK_WIDGETS)
     val customCommands by userPreferences.customCommands.collectAsState(initial = emptyMap())
     val commandHistoryEnabled by userPreferences.commandHistoryEnabled.collectAsState(initial = true)
+    val commandHistory by userPreferences.commandHistory.collectAsState(initial = emptyList())
     val showAllTodosPref by userPreferences.homeShowAllTodos.collectAsState(initial = false)
     val showAllNotesPref by userPreferences.homeShowAllNotes.collectAsState(initial = false)
 
@@ -156,7 +161,7 @@ fun SettingsScreen(
             }
             vName to vCode
         } catch (_: Exception) {
-            "1.7.7" to 16L
+            "1.7.8" to 17L
         }
     }
 
@@ -184,6 +189,29 @@ fun SettingsScreen(
                     userPreferences.setCustomWallpaperUri(file.absolutePath)
                 } catch (e: Exception) {
                     e.printStackTrace()
+                }
+            }
+        }
+    }
+
+    // Markdown History File Exporter
+    val exportHistoryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/markdown")
+    ) { uri: Uri? ->
+        if (uri != null) {
+            scope.launch(Dispatchers.IO) {
+                try {
+                    context.contentResolver.openOutputStream(uri)?.use { output ->
+                        val mdContent = userPreferences.generateHistoryMarkdown(commandHistory)
+                        output.write(mdContent.toByteArray(Charsets.UTF_8))
+                    }
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Command history saved (.md)", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Export error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
@@ -1106,6 +1134,40 @@ fun SettingsScreen(
                                     uncheckedTrackColor = MinimalDarkCardBg
                                 )
                             )
+                        }
+                    )
+
+                    SettingsInsetDivider()
+
+                    // Item 4: Download History (.md)
+                    SettingsItemRow(
+                        icon = Icons.Default.Description,
+                        title = "Download History (.md)",
+                        subtitle = if (commandHistory.isEmpty()) "Buffer empty · No command history to export" else "${commandHistory.size} commands in buffer · Save as markdown file",
+                        trailingContent = {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (commandHistory.isEmpty()) MinimalDarkCardBg else MinimalRed)
+                                    .clickable(enabled = commandHistory.isNotEmpty()) {
+                                        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                                        exportHistoryLauncher.launch("minimal_command_history_$timestamp.md")
+                                    }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = "DOWNLOAD",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (commandHistory.isEmpty()) MinimalGray else MinimalOnAccent
+                                )
+                            }
+                        },
+                        onClick = {
+                            if (commandHistory.isNotEmpty()) {
+                                val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                                exportHistoryLauncher.launch("minimal_command_history_$timestamp.md")
+                            }
                         }
                     )
                 }

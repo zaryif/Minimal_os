@@ -83,9 +83,11 @@ private val BUILTIN_ACTION_KEYWORDS = setOf(
     "call", "dial",
     "msg", "sms", "message", "text",
     "wa", "whatsapp",
-    "alarm", "timer", "event", "cal", "calendar", "schedule",
+    "alarm", "timer", "pomodoro", "pomo", "event", "cal", "calendar", "schedule",
     "email", "mail", "drive",
-    "ask", "search", "google", "find",
+    "assistant", "ai", "ask", "search", "google", "find",
+    "yt", "youtube",
+    "uninstall", "remove", "rmapp",
     "help", "commands", "man", "guide",
     "alias", "custom", "setalias", "unalias", "rmalias"
 )
@@ -142,10 +144,17 @@ fun CommandBar(
                 it == "text" || it.startsWith("text ") ||
                 it == "message" || it.startsWith("message ") ||
                 it.startsWith("alarm ") || it.startsWith("set alarm ") ||
-                it.startsWith("timer ") || it.startsWith("set timer ") ||
+                it == "timer" || it.startsWith("timer ") || it.startsWith("set timer ") ||
+                it == "pomodoro" || it.startsWith("pomodoro ") ||
+                it == "pomo" || it.startsWith("pomo ") ||
                 it.startsWith("event ") || it.startsWith("cal ") || it.startsWith("calendar ") || it.startsWith("schedule ") ||
                 it.startsWith("email ") || it.startsWith("mail ") ||
                 it.startsWith("drive ") ||
+                it == "assistant" || it.startsWith("assistant ") ||
+                it == "ai" || it.startsWith("ai ") ||
+                it == "yt" || it.startsWith("yt ") ||
+                it == "youtube" || it.startsWith("youtube ") ||
+                it == "uninstall" || it.startsWith("uninstall ") || it == "remove" || it.startsWith("remove ") || it == "rmapp" || it.startsWith("rmapp ") ||
                 it.startsWith("ask ") || it.startsWith("search ") || it.startsWith("google ") || it.startsWith("find ") ||
                 it == "help" || it.startsWith("help ") || it == "commands" || it == "man" || it == "guide"
             }
@@ -164,7 +173,7 @@ fun CommandBar(
 
             if (trimmedInput.isNotEmpty()) {
                 val firstChar = trimmedInput[0]
-                if (firstChar in setOf('-', '!', '#', '@', '=', '+', ':', '*', '?', '^', '&')) {
+                if (firstChar in setOf('-', '!', '#', '@', '=', '+', ':', '*', '?', '^', '&', '$', '%', '/')) {
                     triggerEnd = leadingSpaces + 1
                 } else if (trimmedInput.lowercase().startsWith("set alarm ") || trimmedInput.lowercase() == "set alarm") {
                     triggerEnd = leadingSpaces + 9
@@ -430,9 +439,15 @@ fun CommandBar(
             }
         }
 
-        // 2. App auto-complete suggestions if searching apps
+        // 2. App auto-complete suggestions if searching apps or uninstalling
+        val isUninstallMode = lower.let {
+            it.startsWith("uninstall") || it.startsWith("remove") || it.startsWith("rmapp")
+        } || query.startsWith("/")
+        val showAppSuggestions = query.isNotBlank() && !isCallingOrMessaging && matchingApps.isNotEmpty() &&
+                (!hasPrefix || query.startsWith("/"))
+
         AnimatedVisibility(
-            visible = !hasPrefix && query.isNotBlank() && !isCallingOrMessaging && matchingApps.isNotEmpty(),
+            visible = showAppSuggestions,
             enter = fadeIn(),
             exit = fadeOut()
         ) {
@@ -442,7 +457,7 @@ fun CommandBar(
                     .padding(bottom = 6.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(MinimalCardBg)
-                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
+                    .border(1.dp, if (isUninstallMode) MinimalRed.copy(alpha = 0.5f) else MinimalDarkGray, RoundedCornerShape(12.dp))
                     .heightIn(max = 145.dp)
                     .verticalScroll(rememberScrollState())
             ) {
@@ -464,12 +479,29 @@ fun CommandBar(
                             color = MinimalWhite,
                             modifier = Modifier.weight(1f)
                         )
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = "Open app",
-                            tint = MinimalGray,
-                            modifier = Modifier.size(14.dp)
-                        )
+                        if (isUninstallMode) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(MinimalDarkCardBg)
+                                    .border(1.dp, MinimalRed, RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "UNINSTALL",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MinimalRed
+                                )
+                            }
+                        } else {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = "Open app",
+                                tint = MinimalGray,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                     }
                 }
             }

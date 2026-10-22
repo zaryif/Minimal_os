@@ -31,7 +31,10 @@ object CommandParser {
                 CommandType.DRIVE -> listOf("drive ")
                 CommandType.EMAIL -> listOf("mail ", "email ")
                 CommandType.WHATSAPP -> listOf("whatsapp ", "wa ")
-                CommandType.ASK -> listOf("ask ", "search ", "google ", "find ")
+                CommandType.ASK -> listOf("assistant ", "ai ", "ask ", "search ", "google ", "find ")
+                CommandType.YOUTUBE -> listOf("yt ", "youtube ")
+                CommandType.POMODORO -> listOf("pomodoro ", "pomo ")
+                CommandType.UNINSTALL -> listOf("uninstall ", "remove ", "rmapp ")
                 CommandType.HELP -> listOf("help ", "commands ", "guide ")
                 else -> emptyList()
             }
@@ -62,7 +65,10 @@ object CommandParser {
         // 3. Check for natural language keyword prefixes
         val keywordMatches = listOf(
             PrefixMapping(listOf("set alarm", "alarm"), CommandType.ALARM, requireSpace = true),
-            PrefixMapping(listOf("set timer", "timer"), CommandType.TIMER, requireSpace = true),
+            PrefixMapping(listOf("set timer", "timer"), CommandType.TIMER, requireSpace = false),
+            PrefixMapping(listOf("pomodoro", "pomo"), CommandType.POMODORO, requireSpace = false),
+            PrefixMapping(listOf("yt", "youtube"), CommandType.YOUTUBE, requireSpace = false),
+            PrefixMapping(listOf("uninstall", "remove", "rmapp"), CommandType.UNINSTALL, requireSpace = false),
             PrefixMapping(listOf("call", "dial"), CommandType.CALL, requireSpace = false),
             PrefixMapping(listOf("whatsapp", "wa"), CommandType.WHATSAPP, requireSpace = false),
             PrefixMapping(listOf("msg", "sms", "text", "message"), CommandType.MESSAGE, requireSpace = false),
@@ -71,7 +77,7 @@ object CommandParser {
             PrefixMapping(listOf("event", "cal", "calendar", "schedule"), CommandType.EVENT, requireSpace = true),
             PrefixMapping(listOf("drive"), CommandType.DRIVE, requireSpace = true),
             PrefixMapping(listOf("email", "mail"), CommandType.EMAIL, requireSpace = true),
-            PrefixMapping(listOf("ask", "search", "google", "find"), CommandType.ASK, requireSpace = true)
+            PrefixMapping(listOf("assistant", "ai", "ask", "search", "google", "find"), CommandType.ASK, requireSpace = false)
         )
 
         for (mapping in keywordMatches) {

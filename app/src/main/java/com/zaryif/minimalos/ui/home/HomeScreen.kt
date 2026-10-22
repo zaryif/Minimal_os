@@ -193,19 +193,44 @@ fun HomeScreen(
         }
 
         // 2. Apps search
-        matchingApps = if (query.isNotBlank() && !query.startsWith("@") &&
+        val isUninstallCommand = lower.startsWith("uninstall ") || lower.startsWith("remove ") ||
+                lower.startsWith("rmapp ") || lower == "uninstall" || lower == "remove" || lower == "rmapp" ||
+                (query.startsWith("/") && query.length >= 1)
+        val uninstallQuery = when {
+            lower.startsWith("uninstall ") -> lower.substring(10).trim()
+            lower.startsWith("remove ") -> lower.substring(7).trim()
+            lower.startsWith("rmapp ") -> lower.substring(6).trim()
+            query.startsWith("/") -> lower.substring(1).trim()
+            else -> ""
+        }
+
+        matchingApps = if (isUninstallCommand) {
+            if (uninstallQuery.isNotEmpty()) {
+                installedApps.filter {
+                    it.label.lowercase().contains(uninstallQuery) ||
+                    it.packageName.lowercase().contains(uninstallQuery)
+                }
+            } else {
+                installedApps.take(10)
+            }
+        } else if (query.isNotBlank() && !query.startsWith("@") &&
             !query.startsWith("#") && !query.startsWith("-") &&
             !query.startsWith("!") && !query.startsWith("*") &&
             !query.startsWith("+") && !query.startsWith(":") &&
             !query.startsWith("?") && !query.startsWith("^") &&
             !query.startsWith("&") && !query.startsWith("=") &&
+            !query.startsWith("$") && !query.startsWith("%") &&
+            !query.startsWith("/") &&
             !lower.startsWith("call ") && !lower.startsWith("dial ") &&
             !lower.startsWith("msg ") && !lower.startsWith("sms ") &&
             !lower.startsWith("wa ") && !lower.startsWith("whatsapp ") &&
             !lower.startsWith("note ") && !lower.startsWith("todo ") &&
             !lower.startsWith("event ") && !lower.startsWith("alarm ") &&
-            !lower.startsWith("timer ") && !lower.startsWith("drive ") &&
-            !lower.startsWith("email ")
+            !lower.startsWith("timer ") && !lower.startsWith("pomo") &&
+            !lower.startsWith("pomodoro ") && !lower.startsWith("yt ") &&
+            !lower.startsWith("youtube ") && !lower.startsWith("assistant ") &&
+            !lower.startsWith("ai ") && !lower.startsWith("ask ") &&
+            !lower.startsWith("drive ") && !lower.startsWith("email ")
         ) {
             installedApps.filter { it.label.lowercase().contains(lower) }
         } else {
@@ -561,9 +586,23 @@ fun HomeScreen(
                     },
                     matchingApps = matchingApps,
                     onAppSelected = { app ->
+                        val trimmedLower = query.trim().lowercase()
+                        val isUninstall = trimmedLower.startsWith("uninstall") ||
+                                trimmedLower.startsWith("remove") ||
+                                trimmedLower.startsWith("rmapp") ||
+                                query.trim().startsWith("/")
                         query = ""
-                        val launchIntent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                        launchIntent?.let { context.startActivity(it) }
+                        if (isUninstall) {
+                            val result = executeCommandUseCase.execute("uninstall ${app.label}")
+                            when (result) {
+                                is CommandResult.Success -> notificationMessage = result.message
+                                is CommandResult.Error -> notificationMessage = result.error
+                                else -> {}
+                            }
+                        } else {
+                            val launchIntent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                            launchIntent?.let { context.startActivity(it) }
+                        }
                     },
                     matchingContacts = matchingContacts,
                     onContactSelected = { contact ->

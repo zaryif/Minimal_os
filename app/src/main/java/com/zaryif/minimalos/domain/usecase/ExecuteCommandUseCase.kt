@@ -82,8 +82,11 @@ class ExecuteCommandUseCase(
             CommandType.NOTE -> handleNote(command.argument)
             CommandType.EVENT -> handleEvent(command.argument)
             CommandType.TIMER -> handleTimer(command.argument)
+            CommandType.POMODORO -> handlePomodoro(command.argument)
             CommandType.ALARM -> handleAlarm(command.argument)
             CommandType.ASK -> handleAsk(command.argument)
+            CommandType.YOUTUBE -> handleYouTube(command.argument)
+            CommandType.UNINSTALL -> handleUninstall(command.argument)
             CommandType.DRIVE -> handleDrive(command.argument)
             CommandType.EMAIL -> handleEmail(command.argument)
             CommandType.HELP -> handleHelp()
@@ -458,40 +461,86 @@ class ExecuteCommandUseCase(
         )
     }
 
-    private fun handleTimer(arg: String): CommandResult {
-        val lower = arg.lowercase().trim()
-        val seconds = when {
-            lower.endsWith("s") -> lower.dropLast(1).trim().toIntOrNull() ?: 60
-            lower.endsWith("m") -> (lower.dropLast(1).trim().toIntOrNull() ?: 5) * 60
-            lower.endsWith("min") -> (lower.dropLast(3).trim().toIntOrNull() ?: 5) * 60
-            lower.endsWith("mins") -> (lower.dropLast(4).trim().toIntOrNull() ?: 5) * 60
-            lower.endsWith("h") -> (lower.dropLast(1).trim().toIntOrNull() ?: 1) * 3600
-            lower.contains("pomo") -> 25 * 60
-            else -> (lower.filter { it.isDigit() }.toIntOrNull() ?: 5) * 60
+    private fun parseNaturalDurationSeconds(arg: String, defaultMinutes: Int): Int {
+        val clean = arg.lowercase(Locale.getDefault()).trim()
+        if (clean.isEmpty()) return defaultMinutes * 60
+
+        val hourMatch = Regex("(\\d+)\\s*(?:h|hr|hrs|hour|hours)\\b").find(clean)
+        val minMatch = Regex("(\\d+)\\s*(?:m|min|mins|minute|minutes)\\b").find(clean)
+        val secMatch = Regex("(\\d+)\\s*(?:s|sec|secs|second|seconds)\\b").find(clean)
+
+        var totalSeconds = 0
+        var matchedUnit = false
+
+        if (hourMatch != null) {
+            totalSeconds += (hourMatch.groupValues[1].toIntOrNull() ?: 0) * 3600
+            matchedUnit = true
+        }
+        if (minMatch != null) {
+            totalSeconds += (minMatch.groupValues[1].toIntOrNull() ?: 0) * 60
+            matchedUnit = true
+        }
+        if (secMatch != null) {
+            totalSeconds += (secMatch.groupValues[1].toIntOrNull() ?: 0)
+            matchedUnit = true
         }
 
-        // Start global Minimal OS live timer countdown immediately on Home Screen
-        val isPomodoro = lower.contains("pomo")
-        PomodoroTimerManager.start(seconds, if (isPomodoro) "pomodoro" else "timer")
+        if (matchedUnit && totalSeconds > 0) {
+            return totalSeconds
+        }
 
-        // Also trigger Android System AlarmClock intent for native alarm service integration
+        val digits = clean.filter { it.isDigit() }
+        if (digits.isNotEmpty()) {
+            val num = digits.toIntOrNull() ?: defaultMinutes
+            return num * 60
+        }
+
+        return defaultMinutes * 60
+    }
+
+    private fun handlePomodoro(arg: String): CommandResult {
+        val seconds = parseNaturalDurationSeconds(arg, defaultMinutes = 25)
+        PomodoroTimerManager.start(seconds, "pomodoro")
+
+        val minutes = seconds / 60
+        val remainingSec = seconds % 60
+        val timeLabel = if (remainingSec > 0) "${minutes}m ${remainingSec}s" else "${minutes}m"
+
         val intent = Intent(AlarmClock.ACTION_SET_TIMER).apply {
             putExtra(AlarmClock.EXTRA_LENGTH, seconds)
-            putExtra(AlarmClock.EXTRA_MESSAGE, if (isPomodoro) "Pomodoro Focus" else "Minimal Timer")
+            putExtra(AlarmClock.EXTRA_MESSAGE, "Pomodoro Focus")
+            putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        try {
+            context.startActivity(intent)
+        } catch (_: Exception) {}
+
+        return CommandResult.Success("Live Pomodoro started: $timeLabel focus")
+    }
+
+    private fun handleTimer(arg: String): CommandResult {
+        if (arg.lowercase(Locale.getDefault()).contains("pomo")) {
+            return handlePomodoro(arg)
+        }
+        val seconds = parseNaturalDurationSeconds(arg, defaultMinutes = 5)
+        PomodoroTimerManager.start(seconds, "timer")
+
+        val minutes = seconds / 60
+        val remainingSec = seconds % 60
+        val timeLabel = if (remainingSec > 0) "${minutes}m ${remainingSec}s" else "${minutes}m"
+
+        val intent = Intent(AlarmClock.ACTION_SET_TIMER).apply {
+            putExtra(AlarmClock.EXTRA_LENGTH, seconds)
+            putExtra(AlarmClock.EXTRA_MESSAGE, "Minimal Timer")
             putExtra(AlarmClock.EXTRA_SKIP_UI, true)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         return try {
             context.startActivity(intent)
-            CommandResult.Success("Timer set for ${seconds / 60}m ${seconds % 60}s")
+            CommandResult.Success("Live timer started: $timeLabel")
         } catch (_: Exception) {
-            intent.putExtra(AlarmClock.EXTRA_SKIP_UI, false)
-            try {
-                context.startActivity(intent)
-                CommandResult.Success("Set timer for ${seconds / 60}m")
-            } catch (e: Exception) {
-                CommandResult.Success("Timer started: ${seconds / 60}m")
-            }
+            CommandResult.Success("Live timer started: $timeLabel")
         }
     }
 
@@ -571,6 +620,100 @@ class ExecuteCommandUseCase(
         }
     }
 
+    private fun handleUninstall(arg: String): CommandResult {
+        val appQuery = arg.trim()
+        if (appQuery.isEmpty()) {
+            return CommandResult.Error("Usage: uninstall <app_name>\nExample: uninstall chatgpt")
+        }
+
+        val installedApps = appRepository.getInstalledApps()
+        val match = installedApps.find { it.label.equals(appQuery, ignoreCase = true) }
+            ?: installedApps.find { it.packageName.equals(appQuery, ignoreCase = true) }
+            ?: installedApps.find { it.label.lowercase(Locale.getDefault()).startsWith(appQuery.lowercase(Locale.getDefault())) }
+            ?: installedApps.find { it.label.lowercase(Locale.getDefault()).contains(appQuery.lowercase(Locale.getDefault())) }
+
+        if (match == null) {
+            return CommandResult.Error("App \"$appQuery\" not found on this device")
+        }
+
+        if (match.isSystemApp) {
+            val settingsIntent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:${match.packageName}")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            try {
+                context.startActivity(settingsIntent)
+                return CommandResult.Success("${match.label} is a system app. Opening App Info to disable.")
+            } catch (e: Exception) {
+                return CommandResult.Error("Cannot uninstall system app ${match.label}")
+            }
+        }
+
+        val uninstallIntent = Intent(Intent.ACTION_DELETE).apply {
+            data = Uri.parse("package:${match.packageName}")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+
+        return try {
+            context.startActivity(uninstallIntent)
+            CommandResult.Success("Uninstalling ${match.label}…")
+        } catch (e: Exception) {
+            CommandResult.Error("Could not start uninstall: ${e.message}")
+        }
+    }
+
+    private fun handleYouTube(arg: String): CommandResult {
+        val query = arg.trim()
+        val pm = context.packageManager
+
+        if (query.isEmpty()) {
+            val launchIntent = pm.getLaunchIntentForPackage("com.google.android.youtube")
+            if (launchIntent != null) {
+                launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                context.startActivity(launchIntent)
+                return CommandResult.Success("Opening YouTube…")
+            } else {
+                val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com")).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(webIntent)
+                return CommandResult.Success("Opening YouTube…")
+            }
+        }
+
+        // 1. YouTube ACTION_SEARCH intent directly targeting YouTube package
+        val searchIntent = Intent(Intent.ACTION_SEARCH).apply {
+            `package` = "com.google.android.youtube"
+            putExtra("query", query)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        if (pm.resolveActivity(searchIntent, 0) != null) {
+            context.startActivity(searchIntent)
+            return CommandResult.Success("Searching YouTube for \"$query\"")
+        }
+
+        // 2. YouTube URI search intent
+        val viewIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=${Uri.encode(query)}")).apply {
+            `package` = "com.google.android.youtube"
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        if (pm.resolveActivity(viewIntent, 0) != null) {
+            context.startActivity(viewIntent)
+            return CommandResult.Success("Searching YouTube for \"$query\"")
+        }
+
+        // 3. Browser fallback
+        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=${Uri.encode(query)}")).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        return try {
+            context.startActivity(browserIntent)
+            CommandResult.Success("Searching YouTube for \"$query\"")
+        } catch (e: Exception) {
+            CommandResult.Error("Could not search YouTube: ${e.message}")
+        }
+    }
+
     private fun handleAsk(arg: String): CommandResult {
         val query = arg.trim()
         val preferredPkg = runBlocking {
@@ -578,46 +721,121 @@ class ExecuteCommandUseCase(
         }
         val pm = context.packageManager
 
-        // 1. If user explicitly configured an assistant package and it is not SYSTEM_DEFAULT
-        if (!preferredPkg.isNullOrBlank() && preferredPkg != "SYSTEM_DEFAULT") {
-            try {
-                val assistIntent = Intent(Intent.ACTION_ASSIST).apply {
-                    `package` = preferredPkg
+        val knownAi = listOf(
+            "com.google.android.apps.bard" to "Gemini",
+            "com.openai.chatgpt" to "ChatGPT",
+            "com.anthropic.claude" to "Claude",
+            "ai.perplexity.app" to "Perplexity",
+            "com.microsoft.copilot" to "Copilot",
+            "com.google.android.googlequicksearchbox" to "Google Assistant"
+        )
+
+        val targetPkg = if (!preferredPkg.isNullOrBlank() && preferredPkg != "SYSTEM_DEFAULT") {
+            preferredPkg
+        } else {
+            knownAi.firstOrNull { (pkg, _) ->
+                try {
+                    pm.getApplicationInfo(pkg, 0).enabled
+                } catch (_: Exception) { false }
+            }?.first
+        }
+
+        // If query is provided, send it directly to the assistant!
+        if (query.isNotEmpty()) {
+            if (targetPkg != null) {
+                val label = try {
+                    val ai = pm.getApplicationInfo(targetPkg, 0)
+                    pm.getApplicationLabel(ai).toString()
+                } catch (_: Exception) { "Assistant" }
+
+                // 1. Try ACTION_SEND (text/plain) - supported by ChatGPT, Gemini, Claude, Copilot
+                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, query)
+                    `package` = targetPkg
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
-                if (query.isNotEmpty()) {
-                    assistIntent.putExtra(Intent.EXTRA_TEXT, query)
+                if (pm.resolveActivity(sendIntent, 0) != null) {
+                    context.startActivity(sendIntent)
+                    return CommandResult.Success("Sent to $label: \"$query\"")
+                }
+
+                // 2. Try ACTION_ASSIST with query payload
+                val assistIntent = Intent(Intent.ACTION_ASSIST).apply {
+                    `package` = targetPkg
+                    putExtra(Intent.EXTRA_TEXT, query)
+                    putExtra("query", query)
+                    putExtra(android.app.SearchManager.QUERY, query)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 if (pm.resolveActivity(assistIntent, 0) != null) {
                     context.startActivity(assistIntent)
-                    val label = try {
-                        val ai = pm.getApplicationInfo(preferredPkg, 0)
-                        pm.getApplicationLabel(ai).toString()
-                    } catch (_: Exception) { "Assistant" }
-                    return CommandResult.Success("Opening $label…")
+                    return CommandResult.Success("Sent to $label: \"$query\"")
                 }
-            } catch (_: Exception) {}
 
-            val launchIntent = pm.getLaunchIntentForPackage(preferredPkg)?.apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                if (query.isNotEmpty()) {
+                // 3. Try launch intent with EXTRA_TEXT
+                val launchIntent = pm.getLaunchIntentForPackage(targetPkg)?.apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     putExtra(Intent.EXTRA_TEXT, query)
+                    putExtra("query", query)
+                }
+                if (launchIntent != null) {
+                    context.startActivity(launchIntent)
+                    return CommandResult.Success("Opening $label with prompt…")
                 }
             }
-            if (launchIntent != null) {
+
+            // 4. Try Android System Assist overlay with query extras
+            val systemAssist = Intent(Intent.ACTION_ASSIST).apply {
+                putExtra(Intent.EXTRA_TEXT, query)
+                putExtra("query", query)
+                putExtra(android.app.SearchManager.QUERY, query)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            if (pm.resolveActivity(systemAssist, 0) != null) {
                 try {
-                    context.startActivity(launchIntent)
-                    val label = try {
-                        val ai = pm.getApplicationInfo(preferredPkg, 0)
-                        pm.getApplicationLabel(ai).toString()
-                    } catch (_: Exception) { "Assistant" }
-                    return CommandResult.Success("Opening $label…")
+                    context.startActivity(systemAssist)
+                    return CommandResult.Success("Sent to Assistant: \"$query\"")
                 } catch (_: Exception) {}
             }
-        }
 
-        // 2. Direct Android Digital Assistant / Voice Assistant overlay (System Default)
-        if (query.isEmpty()) {
+            // 5. Final fallback: Web Search with the user's prompt
+            val searchIntent = Intent(Intent.ACTION_WEB_SEARCH).apply {
+                putExtra(android.app.SearchManager.QUERY, query)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            return try {
+                context.startActivity(searchIntent)
+                CommandResult.Success("Searching '$query'…")
+            } catch (_: Exception) {
+                val browserFallback = Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://www.google.com/search?q=${Uri.encode(query)}")
+                ).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
+                try {
+                    context.startActivity(browserFallback)
+                    CommandResult.Success("Opening search for '$query'")
+                } catch (e: Exception) {
+                    CommandResult.Error("Could not launch assistant: ${e.message}")
+                }
+            }
+        } else {
+            // Query is empty: simply launch the assistant overlay or app
+            if (targetPkg != null) {
+                val label = try {
+                    val ai = pm.getApplicationInfo(targetPkg, 0)
+                    pm.getApplicationLabel(ai).toString()
+                } catch (_: Exception) { "Assistant" }
+
+                val launchIntent = pm.getLaunchIntentForPackage(targetPkg)?.apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                if (launchIntent != null) {
+                    context.startActivity(launchIntent)
+                    return CommandResult.Success("Opening $label…")
+                }
+            }
+
             val assistIntent = Intent(Intent.ACTION_VOICE_COMMAND).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
@@ -631,28 +849,9 @@ class ExecuteCommandUseCase(
                 try {
                     context.startActivity(assistFallback)
                     return CommandResult.Success("Opening Assistant…")
-                } catch (_: Exception) {}
-            }
-        }
-
-        // 3. Web Search with query directly launched
-        val searchIntent = Intent(Intent.ACTION_WEB_SEARCH).apply {
-            putExtra(android.app.SearchManager.QUERY, query)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        return try {
-            context.startActivity(searchIntent)
-            CommandResult.Success("Searching '$query'…")
-        } catch (_: Exception) {
-            val browserFallback = Intent(
-                Intent.ACTION_VIEW,
-                Uri.parse("https://www.google.com/search?q=${Uri.encode(query)}")
-            ).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
-            try {
-                context.startActivity(browserFallback)
-                CommandResult.Success("Opening search for '$query'")
-            } catch (e: Exception) {
-                CommandResult.Error("Could not launch assistant: ${e.message}")
+                } catch (_: Exception) {
+                    return CommandResult.Error("Could not open digital assistant")
+                }
             }
         }
     }
