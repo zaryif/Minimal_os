@@ -88,6 +88,8 @@ Type keyword or symbol + text  ->  Instant execution
 | _(app name)_ | **Fuzzy App Search** | `spot` | Real-time app search with instant keyboard launch |
 | _(search query)_ | **Web Search** | `weather today` | Fast distraction-free web search in default browser |
 
+> **Directory of 120+ Aliases & System Shortcuts**: Check out the comprehensive [ALIASES_AND_SHORTCUTS.md](ALIASES_AND_SHORTCUTS.md) directory for ready-to-use Android settings intents (`android.settings.WIFI_SETTINGS`, `BLUETOOTH_SETTINGS`, `BATTERY_SAVER_SETTINGS`), dynamic search engines with `{query}`, app package shortcuts, and instructions on finding intent actions and package IDs.
+
 #### Terminal Power Features:
 - **Interactive Command History Stream**: When typing, past commands appear in a clean, scrollable card stream. Tap any entry to reload it into the command bar ready to edit or run.
 - **Terminal History Storage & Download (.md)**: All terminal commands are continuously logged to a structured markdown file (`minimal_command_history.md`). Users can export and download this `.md` file at any time from Settings using the Android Storage Access Framework.

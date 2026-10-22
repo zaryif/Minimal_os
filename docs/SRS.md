@@ -32,7 +32,7 @@
 - **FR-CMD-09 (YouTube Direct Search):** Symbol `$` or keyword `yt`/`youtube` + query -> Search directly in YouTube Android app with web fallback.
 - **FR-CMD-10 (Live Pomodoro Timer):** Symbol `%` or keyword `pomo`/`pomodoro` + duration -> Parse duration naturally (e.g. `pomo 50m`, `pomodoro 50 minute`) and start live Pomodoro countdown widget.
 - **FR-CMD-11 (App Uninstallation):** Symbol `/` or keyword `uninstall`/`remove`/`rmapp` + app name -> Match installed application and trigger native Android `Intent.ACTION_DELETE` dialog.
-- **FR-CMD-12 (Custom Aliases):** `alias <name> = <target>`, `unalias <name>`, and `alias list` -> Create, delete, and list custom user-defined shortcuts.
+- **FR-CMD-12 (Custom Aliases):** `alias <name> = <target>`, `unalias <name>`, and `alias list` -> Create, delete, and list custom user-defined shortcuts. Comprehensive reference directory available in [ALIASES_AND_SHORTCUTS.md](../ALIASES_AND_SHORTCUTS.md).
 - **FR-CMD-13 (Terminal History Stream):** Interactive card stream showing past commands as numbered squared cards. Tapping any card reloads it into the input bar.
 - **FR-CMD-14 (Terminal History Storage & Export):** Continuously persist command history to `minimal_command_history.md`. Provide a download button in Settings via Storage Access Framework (`CreateDocument("text/markdown")`).
 - **FR-CMD-15 (Terminal History Toggle):** Allow users to enable or disable command history recording in Settings.
