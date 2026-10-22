@@ -37,6 +37,7 @@ class UserPreferences(private val context: Context) {
         private val DECK_WIDGETS_ORDER = stringPreferencesKey("deck_widgets_order")
         private val CUSTOM_COMMANDS_JSON = stringPreferencesKey("custom_commands_json")
         private val COMMAND_HISTORY = stringPreferencesKey("command_history")
+        private val COMMAND_HISTORY_ENABLED = booleanPreferencesKey("command_history_enabled")
         private val THEME_ID = stringPreferencesKey("theme_id")
         private val HOME_SHOW_ALL_TODOS = booleanPreferencesKey("home_show_all_todos")
         private val HOME_SHOW_ALL_NOTES = booleanPreferencesKey("home_show_all_notes")
@@ -271,8 +272,19 @@ class UserPreferences(private val context: Context) {
         }
     }
 
+    val commandHistoryEnabled: Flow<Boolean> = context.dataStore.data
+        .map { prefs -> prefs[COMMAND_HISTORY_ENABLED] ?: true }
+
+    suspend fun setCommandHistoryEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[COMMAND_HISTORY_ENABLED] = enabled
+        }
+    }
+
     val commandHistory: Flow<List<String>> = context.dataStore.data
         .map { prefs ->
+            val enabled = prefs[COMMAND_HISTORY_ENABLED] ?: true
+            if (!enabled) return@map emptyList()
             val json = prefs[COMMAND_HISTORY]
             if (json.isNullOrBlank()) {
                 emptyList()
@@ -290,6 +302,7 @@ class UserPreferences(private val context: Context) {
         val trimmed = command.trim()
         if (trimmed.isEmpty()) return
         context.dataStore.edit { prefs ->
+            if (prefs[COMMAND_HISTORY_ENABLED] == false) return@edit
             val current = try {
                 val json = prefs[COMMAND_HISTORY]
                 if (json.isNullOrBlank()) {

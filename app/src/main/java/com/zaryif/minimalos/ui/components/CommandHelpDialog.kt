@@ -186,7 +186,7 @@ fun CommandHelpDialog(
                                     fontFamily = FontFamily.Monospace
                                 )
                                 Text(
-                                    text = "TAP TO USE ➔",
+                                    text = "TAP TO USE ->",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MinimalGray
@@ -235,7 +235,7 @@ fun CommandHelpDialog(
                                     "• System settings: alias wifi = android.settings.WIFI_SETTINGS\n" +
                                     "• View all: alias list\n" +
                                     "• Delete: unalias yt\n\n" +
-                                    "You can also manage them visually in Settings ➔ Custom Commands.",
+                                    "You can also manage them visually in Settings -> Custom Commands.",
                             fontSize = 12.sp,
                             color = MinimalWhite,
                             lineHeight = 18.sp

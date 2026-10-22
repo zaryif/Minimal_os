@@ -402,7 +402,7 @@ private fun StepTypeToDoThings(onNext: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Manage your aliases visually anytime in Widgets Deck or Settings ➔ Command Aliases.",
+                    text = "Manage your aliases visually anytime in Widgets Deck or Settings -> Command Aliases.",
                     fontSize = 11.sp,
                     color = MinimalGray,
                     lineHeight = 15.sp

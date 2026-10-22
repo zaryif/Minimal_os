@@ -382,7 +382,7 @@ fun MinimalHomeCalendarWidget(
                 }
             }
             Text(
-                text = "OPEN ➔",
+                text = "OPEN ->",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 color = MinimalRed

@@ -121,6 +121,7 @@ fun HomeScreen(
     val showAllNotesPref by userPreferences.homeShowAllNotes.collectAsState(initial = false)
     val showCommandFeedback by userPreferences.showCommandFeedback.collectAsState(initial = false)
     val assistantPackage by userPreferences.assistantPackage.collectAsState(initial = null)
+    val commandHistoryEnabled by userPreferences.commandHistoryEnabled.collectAsState(initial = true)
     val commandHistory by userPreferences.commandHistory.collectAsState(initial = emptyList())
     val customCommands by userPreferences.customCommands.collectAsState(initial = emptyMap())
 
@@ -454,7 +455,7 @@ fun HomeScreen(
                         )
                     }
                 }
-            } else {
+            } else if (commandHistoryEnabled) {
                 CommandHistoryChatStream(
                     history = commandHistory,
                     currentQuery = query,
@@ -470,6 +471,8 @@ fun HomeScreen(
                         .weight(1f)
                         .fillMaxWidth()
                 )
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
             }
 
             // 3. Bottom Area: Gesture hints (only when idle) + CommandBar (ALWAYS VISIBLE ABOVE KEYBOARD)
@@ -494,7 +497,7 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "➔ hub",
+                            text = "<- hub",
                             fontSize = 11.sp,
                             color = MinimalDarkGray,
                             fontWeight = FontWeight.Medium,
@@ -514,7 +517,7 @@ fun HomeScreen(
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                         Text(
-                            text = "widgets ➔",
+                            text = "widgets ->",
                             fontSize = 11.sp,
                             color = MinimalDarkGray,
                             fontWeight = FontWeight.Medium,
@@ -531,8 +534,10 @@ fun HomeScreen(
                     query = query,
                     onQueryChange = { query = it },
                     onExecute = { input ->
-                        scope.launch {
-                            userPreferences.addCommandToHistory(input)
+                        if (commandHistoryEnabled) {
+                            scope.launch {
+                                userPreferences.addCommandToHistory(input)
+                            }
                         }
                         val result = executeCommandUseCase.execute(input)
                         when (result) {
@@ -572,6 +577,7 @@ fun HomeScreen(
                         }
                     },
                     commandHistory = commandHistory,
+                    isHistoryEnabled = commandHistoryEnabled,
                     customAliases = customCommands.keys,
                     hasContactPermission = hasContactPermission,
                     onRequestContactPermission = {

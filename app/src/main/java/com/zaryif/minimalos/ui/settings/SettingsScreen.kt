@@ -53,6 +53,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
@@ -132,6 +133,7 @@ fun SettingsScreen(
     val homeWidgets by userPreferences.homeWidgets.collectAsState(initial = UserPreferences.DEFAULT_HOME_WIDGETS)
     val deckWidgetsOrder by userPreferences.deckWidgetsOrder.collectAsState(initial = UserPreferences.DEFAULT_DECK_WIDGETS)
     val customCommands by userPreferences.customCommands.collectAsState(initial = emptyMap())
+    val commandHistoryEnabled by userPreferences.commandHistoryEnabled.collectAsState(initial = true)
     val showAllTodosPref by userPreferences.homeShowAllTodos.collectAsState(initial = false)
     val showAllNotesPref by userPreferences.homeShowAllNotes.collectAsState(initial = false)
 
@@ -154,7 +156,7 @@ fun SettingsScreen(
             }
             vName to vCode
         } catch (_: Exception) {
-            "1.7.6" to 15L
+            "1.7.7" to 16L
         }
     }
 
@@ -973,7 +975,7 @@ fun SettingsScreen(
             // =========================================================
             // CATEGORY 4: COMMANDS & SHORTCUTS
             // =========================================================
-            if (q.isEmpty() || "command".contains(q) || "alias".contains(q) || "feedback".contains(q) || "popup".contains(q)) {
+            if (q.isEmpty() || "command".contains(q) || "alias".contains(q) || "feedback".contains(q) || "popup".contains(q) || "history".contains(q)) {
                 SettingsSectionHeader(title = "COMMAND BAR & SHORTCUTS")
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -1019,7 +1021,7 @@ fun SettingsScreen(
                         ) {
                             if (customCommands.isEmpty()) {
                                 Text(
-                                    text = "No custom aliases yet. Tap '+ ADD' to create shortcuts like 'yt' ➔ YouTube or 'wifi' ➔ Settings.",
+                                    text = "No custom aliases yet. Tap '+ ADD' to create shortcuts like 'yt' -> YouTube or 'wifi' -> Settings.",
                                     fontSize = 12.sp,
                                     color = MinimalGray,
                                     lineHeight = 16.sp
@@ -1042,7 +1044,7 @@ fun SettingsScreen(
                                                 fontFamily = FontFamily.Monospace
                                             )
                                             Text(
-                                                text = "➔ $target",
+                                                text = "-> $target",
                                                 fontSize = 11.sp,
                                                 color = MinimalGray,
                                                 fontFamily = FontFamily.Monospace
@@ -1076,6 +1078,27 @@ fun SettingsScreen(
                             Switch(
                                 checked = showCommandFeedback,
                                 onCheckedChange = { scope.launch { userPreferences.setShowCommandFeedback(it) } },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MinimalWhite,
+                                    checkedTrackColor = MinimalRed,
+                                    uncheckedThumbColor = MinimalGray,
+                                    uncheckedTrackColor = MinimalDarkCardBg
+                                )
+                            )
+                        }
+                    )
+
+                    SettingsInsetDivider()
+
+                    // Item 3: Command Box History
+                    SettingsItemRow(
+                        icon = Icons.Default.History,
+                        title = "Command Box History",
+                        subtitle = if (commandHistoryEnabled) "Buffer and cycle buttons enabled in command bar" else "History buffer and cycle buttons disabled",
+                        trailingContent = {
+                            Switch(
+                                checked = commandHistoryEnabled,
+                                onCheckedChange = { scope.launch { userPreferences.setCommandHistoryEnabled(it) } },
                                 colors = SwitchDefaults.colors(
                                     checkedThumbColor = MinimalWhite,
                                     checkedTrackColor = MinimalRed,
@@ -1310,7 +1333,7 @@ fun SettingsScreen(
                                     .background(MinimalRed)
                                     .padding(horizontal = 7.dp, vertical = 3.dp)
                             ) {
-                                Text(text = "☕ COFFEE", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MinimalOnAccent)
+                                Text(text = "SUPPORT", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MinimalOnAccent)
                             }
                         },
                         onClick = {
@@ -1334,7 +1357,7 @@ fun SettingsScreen(
                                     .border(1.dp, MinimalRed, RoundedCornerShape(6.dp))
                                     .padding(horizontal = 7.dp, vertical = 3.dp)
                             ) {
-                                Text(text = "REPLAY ▶", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MinimalRed)
+                                Text(text = "REPLAY", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MinimalRed)
                             }
                         },
                         onClick = { onNavigateToOnboarding() }
@@ -1907,11 +1930,11 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         val pillars = listOf(
-                            Pair("⌨️ Unified Command Bar", "8 instant symbol triggers (@, #, -, !, *, +, :, ?) & custom alias routing."),
-                            Pair("📝 Minimal Memo & To-Dos", "Real-time search, quick-add memo bar, and zero-distraction home list."),
-                            Pair("⏱️ Live Widgets Deck", "Live Alarm Countdown, Focus Countdown, Pomodoro & Quick Aliases."),
-                            Pair("🎨 Adaptive Luminance Engine", "Dynamic MinimalOnAccent WCAG AAA contrast across all light & dark themes."),
-                            Pair("🔒 100% Private & Local-First", "Zero telemetry, offline-first, no tracking, ads, or data harvesting.")
+                            Pair("Unified Command Bar", "8 instant symbol triggers (@, #, -, !, *, +, :, ?) & custom alias routing."),
+                            Pair("Minimal Memo & To-Dos", "Real-time search, quick-add memo bar, and zero-distraction home list."),
+                            Pair("Live Widgets Deck", "Live Alarm Countdown, Focus Countdown, Pomodoro & Quick Aliases."),
+                            Pair("Adaptive Luminance Engine", "Dynamic MinimalOnAccent WCAG AAA contrast across all light & dark themes."),
+                            Pair("100% Private & Local-First", "Zero telemetry, offline-first, no tracking, ads, or data harvesting.")
                         )
 
                         pillars.forEach { (title, desc) ->
@@ -1979,7 +2002,7 @@ fun SettingsScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "☕ FUND THE PROJECT (BUY ME A COFFEE)",
+                                text = "FUND THE PROJECT (BUY ME A COFFEE)",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MinimalOnAccent

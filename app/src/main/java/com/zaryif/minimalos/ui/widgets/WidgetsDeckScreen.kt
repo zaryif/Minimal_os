@@ -170,7 +170,7 @@ fun WidgetsDeckScreen(
                 }
 
                 Text(
-                    text = "HOME ➔",
+                    text = "HOME ->",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = MinimalRed,
@@ -367,7 +367,7 @@ fun WidgetsDeckScreen(
 
             // Bottom hint
             Text(
-                text = "➔ SWIPE RIGHT FOR HOME",
+                text = "SWIPE RIGHT FOR HOME ->",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp,
@@ -1498,7 +1498,7 @@ private fun RabbitAliasesWidgetCard(
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "RUN ➔",
+                                        text = "RUN ->",
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = MinimalGray

@@ -781,7 +781,7 @@ class ExecuteCommandUseCase(
             if (customMap.isEmpty()) {
                 return CommandResult.Success("No custom aliases set. Type: alias <key> = <action>")
             }
-            val formatted = customMap.entries.joinToString("\n") { (k, v) -> "• $k ➔ $v" }
+            val formatted = customMap.entries.joinToString("\n") { (k, v) -> "• $k -> $v" }
             return CommandResult.Success("Custom Aliases:\n$formatted")
         }
 
@@ -804,7 +804,7 @@ class ExecuteCommandUseCase(
         runBlocking {
             userPreferences.setCustomCommand(key, target)
         }
-        return CommandResult.Success("Saved custom alias '$key' ➔ $target")
+        return CommandResult.Success("Saved custom alias '$key' -> $target")
     }
 
     private fun handleUnaliasCommand(args: String): CommandResult {

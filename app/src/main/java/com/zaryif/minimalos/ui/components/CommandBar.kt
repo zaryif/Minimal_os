@@ -100,6 +100,7 @@ fun CommandBar(
     matchingContacts: List<Contact>,
     onContactSelected: (Contact) -> Unit,
     commandHistory: List<String> = emptyList(),
+    isHistoryEnabled: Boolean = true,
     customAliases: Set<String> = emptySet(),
     hasContactPermission: Boolean = true,
     onRequestContactPermission: (() -> Unit)? = null,
@@ -214,7 +215,7 @@ fun CommandBar(
     }
 
     fun navigateHistory(up: Boolean) {
-        if (commandHistory.isEmpty()) return
+        if (!isHistoryEnabled || commandHistory.isEmpty()) return
         if (up) {
             if (historyIndex == -1) {
                 tempQueryBeforeHistory = query
@@ -489,7 +490,7 @@ fun CommandBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Terminal History Indicator Badge
-                if (historyIndex >= 0 && commandHistory.isNotEmpty()) {
+                if (isHistoryEnabled && historyIndex >= 0 && commandHistory.isNotEmpty()) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))
@@ -535,7 +536,7 @@ fun CommandBar(
                             .fillMaxWidth()
                             .focusRequester(focusRequester)
                             .onPreviewKeyEvent { keyEvent ->
-                                if (keyEvent.type == KeyEventType.KeyDown) {
+                                if (isHistoryEnabled && keyEvent.type == KeyEventType.KeyDown) {
                                     when (keyEvent.key) {
                                         Key.DirectionUp -> {
                                             navigateHistory(up = true)
@@ -571,7 +572,7 @@ fun CommandBar(
                 }
 
                 // Terminal history Up / Down cycling buttons
-                if (commandHistory.isNotEmpty()) {
+                if (isHistoryEnabled && commandHistory.isNotEmpty()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(
                             onClick = { navigateHistory(up = true) },
