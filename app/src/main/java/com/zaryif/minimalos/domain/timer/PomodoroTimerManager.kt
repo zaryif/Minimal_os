@@ -40,6 +40,9 @@ object PomodoroTimerManager {
     private val _isRunning = MutableStateFlow(false)
     val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
 
+    private val _hasStarted = MutableStateFlow(false)
+    val hasStarted: StateFlow<Boolean> = _hasStarted.asStateFlow()
+
     private val _isBreakMode = MutableStateFlow(false)
     val isBreakMode: StateFlow<Boolean> = _isBreakMode.asStateFlow()
 
@@ -68,6 +71,7 @@ object PomodoroTimerManager {
             _workDurationSeconds.value = seconds
         }
         _timerLabel.value = label
+        _hasStarted.value = true
         _isRunning.value = true
         startTicker()
     }
@@ -85,6 +89,7 @@ object PomodoroTimerManager {
             if (_remainingSeconds.value <= 0) {
                 reset()
             }
+            _hasStarted.value = true
             _isRunning.value = true
             startTicker()
         }
@@ -92,6 +97,7 @@ object PomodoroTimerManager {
 
     fun reset() {
         pause()
+        _hasStarted.value = false
         _remainingSeconds.value = if (_isBreakMode.value) _breakDurationSeconds.value else _workDurationSeconds.value
     }
 

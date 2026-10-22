@@ -50,6 +50,7 @@ import com.zaryif.minimalos.ui.theme.MinimalWhite
 fun MinimalLiveTimerCard(
     modifier: Modifier = Modifier
 ) {
+    val hasStarted by PomodoroTimerManager.hasStarted.collectAsState()
     val isRunning by PomodoroTimerManager.isRunning.collectAsState()
     val remainingSeconds by PomodoroTimerManager.remainingSeconds.collectAsState()
     val workDuration by PomodoroTimerManager.workDurationSeconds.collectAsState()
@@ -57,8 +58,8 @@ fun MinimalLiveTimerCard(
     val timerLabel by PomodoroTimerManager.timerLabel.collectAsState()
     val isBreak by PomodoroTimerManager.isBreakMode.collectAsState()
 
-    // Show whenever timer is actively ticking, or paused mid-session
-    val hasActiveSession = isRunning || (remainingSeconds > 0 && remainingSeconds != workDuration && remainingSeconds != breakDuration)
+    // Show whenever timer is actively started or running, with positive remaining seconds
+    val hasActiveSession = (hasStarted || isRunning) && remainingSeconds > 0
 
     AnimatedVisibility(
         visible = hasActiveSession,

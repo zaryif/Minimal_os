@@ -47,6 +47,10 @@ import com.zaryif.minimalos.ui.theme.MinimalGray
 import com.zaryif.minimalos.ui.theme.MinimalOnAccent
 import com.zaryif.minimalos.ui.theme.MinimalRed
 import com.zaryif.minimalos.ui.theme.MinimalWhite
+import android.app.DatePickerDialog
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.ui.platform.LocalContext
+import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
@@ -58,6 +62,7 @@ fun MinimalAlarmTimePickerDialog(
     onDismiss: () -> Unit,
     onConfirm: (hour: Int, minute: Int, amPm: String, dayLabel: String) -> Unit
 ) {
+    val context = LocalContext.current
     val now = remember { Calendar.getInstance() }
     val defaultH = remember {
         val rawH = now.get(Calendar.HOUR)
@@ -72,7 +77,27 @@ fun MinimalAlarmTimePickerDialog(
     var selectedAmPm by remember { mutableStateOf(if (initialAmPm.equals("PM", ignoreCase = true)) "PM" else defaultAmPm) }
     var selectedDay by remember { mutableStateOf("Tomorrow") }
 
-    val dayOptions = listOf("Today", "Tomorrow", "Daily", "Weekdays")
+    val openDatePicker = {
+        val cal = Calendar.getInstance()
+        val dpd = DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val chosen = Calendar.getInstance().apply {
+                    set(Calendar.YEAR, year)
+                    set(Calendar.MONTH, month)
+                    set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                }
+                val sdf = SimpleDateFormat("MMM d", Locale.US)
+                selectedDay = sdf.format(chosen.time)
+            },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        )
+        dpd.datePicker.minDate = System.currentTimeMillis() - 1000
+        dpd.show()
+    }
+
     val commonMinutes = listOf(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55)
 
     Dialog(onDismissRequest = onDismiss) {
@@ -130,23 +155,31 @@ fun MinimalAlarmTimePickerDialog(
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Row(verticalAlignment = Alignment.Bottom) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = String.format(Locale.US, "%02d:%02d", selectedHour, selectedMinute),
+                                fontFamily = AppleSanFranciscoFontFamily,
+                                fontSize = 42.sp,
+                                fontWeight = FontWeight.Light,
+                                color = MinimalWhite,
+                                letterSpacing = (-1).sp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = selectedAmPm,
+                                fontFamily = AppleSanFranciscoFontFamily,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MinimalRed,
+                                modifier = Modifier.padding(bottom = 6.dp)
+                            )
+                        }
                         Text(
-                            text = String.format(Locale.US, "%02d:%02d", selectedHour, selectedMinute),
+                            text = "Rings $selectedDay",
                             fontFamily = AppleSanFranciscoFontFamily,
-                            fontSize = 42.sp,
-                            fontWeight = FontWeight.Light,
-                            color = MinimalWhite,
-                            letterSpacing = (-1).sp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = selectedAmPm,
-                            fontFamily = AppleSanFranciscoFontFamily,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MinimalRed,
-                            modifier = Modifier.padding(bottom = 6.dp)
+                            fontSize = 12.sp,
+                            color = MinimalGray
                         )
                     }
                 }
@@ -287,12 +320,14 @@ fun MinimalAlarmTimePickerDialog(
                         }
                     }
 
-                    // Day Selectors
-                    LazyRow(
+                    // Date Selectors: Today, Tomorrow, and Calendar Date Picker
+                    val isCustomDate = selectedDay != "Today" && selectedDay != "Tomorrow"
+                    Row(
                         modifier = Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        items(dayOptions) { day ->
+                        listOf("Today", "Tomorrow").forEach { day ->
                             val isSelected = day == selectedDay
                             Box(
                                 modifier = Modifier
@@ -300,7 +335,7 @@ fun MinimalAlarmTimePickerDialog(
                                     .background(if (isSelected) MinimalRed else MinimalDarkCardBg)
                                     .border(1.dp, if (isSelected) MinimalRed else MinimalDarkGray, RoundedCornerShape(8.dp))
                                     .clickable { selectedDay = day }
-                                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                                    .padding(horizontal = 9.dp, vertical = 7.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -308,6 +343,33 @@ fun MinimalAlarmTimePickerDialog(
                                     fontSize = 11.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                     color = if (isSelected) MinimalOnAccent else MinimalWhite
+                                )
+                            }
+                        }
+
+                        // Calendar Date Picker Chip
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isCustomDate) MinimalRed else MinimalDarkCardBg)
+                                .border(1.dp, if (isCustomDate) MinimalRed else MinimalDarkGray, RoundedCornerShape(8.dp))
+                                .clickable { openDatePicker() }
+                                .padding(horizontal = 9.dp, vertical = 7.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarMonth,
+                                    contentDescription = "Pick Date",
+                                    tint = if (isCustomDate) MinimalOnAccent else MinimalRed,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (isCustomDate) selectedDay else "Pick Date",
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isCustomDate) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isCustomDate) MinimalOnAccent else MinimalWhite
                                 )
                             }
                         }

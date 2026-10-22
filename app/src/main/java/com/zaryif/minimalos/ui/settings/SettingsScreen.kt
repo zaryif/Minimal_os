@@ -154,7 +154,7 @@ fun SettingsScreen(
             }
             vName to vCode
         } catch (_: Exception) {
-            "1.7.5" to 14L
+            "1.7.6" to 15L
         }
     }
 
@@ -1327,12 +1327,15 @@ fun SettingsScreen(
                         title = "App Walkthrough & Guide",
                         subtitle = "Interactive tutorial on command gestures, hub, & philosophy",
                         trailingContent = {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = MinimalGray,
-                                modifier = Modifier.size(18.dp)
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MinimalDarkCardBg)
+                                    .border(1.dp, MinimalRed, RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 7.dp, vertical = 3.dp)
+                            ) {
+                                Text(text = "REPLAY ▶", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MinimalRed)
+                            }
                         },
                         onClick = { onNavigateToOnboarding() }
                     )

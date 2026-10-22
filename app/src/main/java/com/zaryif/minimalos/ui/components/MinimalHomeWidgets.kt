@@ -120,7 +120,7 @@ fun MinimalDynamicHomeWidgets(
                     )
                 }
 
-                "POMODORO" -> {
+                "POMODORO", "TIMERS", "LIVE_TIMER" -> {
                     MinimalHomePomodoroWidget()
                 }
 
@@ -551,66 +551,114 @@ fun MinimalHomeAlarmCountdownWidget(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(MinimalCardBg)
-            .border(1.dp, if (hasAlarm) MinimalRed.copy(alpha = 0.5f) else MinimalDarkGray, RoundedCornerShape(12.dp))
+            .border(1.dp, if (hasAlarm) MinimalRed.copy(alpha = 0.5f) else MinimalDarkGray.copy(alpha = 0.7f), RoundedCornerShape(14.dp))
             .clickable { onOpenClock() }
-            .padding(14.dp)
+            .padding(16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Alarm,
-                    contentDescription = null,
-                    tint = MinimalRed,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Column {
-                    Text(
-                        text = "ALARM COUNTDOWN",
-                        fontSize = 10.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        color = MinimalRed,
-                        letterSpacing = 0.5.sp
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = countdownText,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MinimalWhite
-                    )
-                    if (hasAlarm) {
+        if (hasAlarm) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Alarm,
+                            contentDescription = null,
+                            tint = MinimalRed,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "rings at $alarmTimeFormatted",
+                            text = "NEXT ALARM",
+                            fontFamily = AppleSanFranciscoFontFamily,
                             fontSize = 11.sp,
-                            color = MinimalGray
+                            fontWeight = FontWeight.Bold,
+                            color = MinimalRed,
+                            letterSpacing = 1.sp
+                        )
+                    }
+
+                    // Sleek minimal live status pill
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(MinimalDarkCardBg)
+                            .border(0.5.dp, MinimalRed.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "● ACTIVE",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MinimalRed
                         )
                     }
                 }
-            }
 
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(MinimalDarkCardBg)
-                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // High-end typographic countdown (Apple / Google standard)
                 Text(
-                    text = if (hasAlarm) "CLOCK ➔" else "+ SET",
-                    fontSize = 10.sp,
+                    text = countdownText,
+                    fontFamily = AppleSanFranciscoFontFamily,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Light,
+                    color = MinimalWhite,
+                    letterSpacing = (-0.5).sp
+                )
+
+                Spacer(modifier = Modifier.height(3.dp))
+
+                // Detailed ring time & day
+                Text(
+                    text = "Rings $alarmTimeFormatted",
+                    fontFamily = AppleSanFranciscoFontFamily,
+                    fontSize = 12.sp,
+                    color = MinimalGray
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Alarm,
+                        contentDescription = null,
+                        tint = MinimalGray,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "NO UPCOMING ALARM",
+                            fontFamily = AppleSanFranciscoFontFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MinimalGray,
+                            letterSpacing = 0.5.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Tap to configure an alarm in deck",
+                            fontFamily = AppleSanFranciscoFontFamily,
+                            fontSize = 12.sp,
+                            color = MinimalDarkGray
+                        )
+                    }
+                }
+
+                Text(
+                    text = "● STANDBY",
+                    fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (hasAlarm) MinimalGray else MinimalRed
+                    color = MinimalDarkGray
                 )
             }
         }

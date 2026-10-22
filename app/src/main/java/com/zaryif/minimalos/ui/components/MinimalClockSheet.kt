@@ -37,6 +37,7 @@ import com.zaryif.minimalos.ui.theme.MinimalBlack
 import com.zaryif.minimalos.ui.theme.MinimalGray
 import com.zaryif.minimalos.ui.theme.MinimalRed
 import com.zaryif.minimalos.ui.theme.MinimalWhite
+import com.zaryif.minimalos.domain.timer.PomodoroTimerManager
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -53,6 +54,8 @@ fun MinimalClockSheet(
     var currentTime by remember { mutableStateOf("") }
     var currentSeconds by remember { mutableStateOf("") }
     var currentDate by remember { mutableStateOf("") }
+    var showTimerDialog by remember { mutableStateOf(false) }
+    var showAlarmDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         val timeFormat = SimpleDateFormat("h:mm", Locale.getDefault())
@@ -135,32 +138,62 @@ fun MinimalClockSheet(
             ) {
                 MinimalButton(
                     text = "+ set timer",
-                    onClick = {
-                        try {
-                            val intent = Intent(AlarmClock.ACTION_SET_TIMER).apply {
-                                putExtra(AlarmClock.EXTRA_LENGTH, 300)
-                                putExtra(AlarmClock.EXTRA_SKIP_UI, false)
-                            }
-                            context.startActivity(intent)
-                        } catch (_: Exception) {}
-                    },
+                    onClick = { showTimerDialog = true },
                     modifier = Modifier.weight(1f),
                     style = ButtonStyle.SECONDARY
                 )
                 MinimalButton(
                     text = ": set alarm",
-                    onClick = {
-                        try {
-                            val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
-                                putExtra(AlarmClock.EXTRA_SKIP_UI, false)
-                            }
-                            context.startActivity(intent)
-                        } catch (_: Exception) {}
-                    },
+                    onClick = { showAlarmDialog = true },
                     modifier = Modifier.weight(1f),
                     style = ButtonStyle.PRIMARY
                 )
             }
+        }
+
+        if (showTimerDialog) {
+            CustomTimerDurationDialog(
+                initialMinutes = 10,
+                onDismiss = { showTimerDialog = false },
+                onSetTimer = { seconds, label ->
+                    PomodoroTimerManager.start(seconds, label)
+                    try {
+                        val intent = Intent(AlarmClock.ACTION_SET_TIMER).apply {
+                            putExtra(AlarmClock.EXTRA_LENGTH, seconds)
+                            putExtra(AlarmClock.EXTRA_MESSAGE, "Minimal Timer")
+                            putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(intent)
+                    } catch (_: Exception) {}
+                    showTimerDialog = false
+                    onDismiss()
+                }
+            )
+        }
+
+        if (showAlarmDialog) {
+            MinimalAlarmTimePickerDialog(
+                initialHour = 7,
+                initialMinute = 0,
+                initialAmPm = "AM",
+                onDismiss = { showAlarmDialog = false },
+                onConfirm = { hour, minute, amPm, dayLabel ->
+                    val finalHour = if (amPm == "PM" && hour < 12) hour + 12 else if (amPm == "AM" && hour == 12) 0 else hour
+                    try {
+                        val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+                            putExtra(AlarmClock.EXTRA_HOUR, finalHour)
+                            putExtra(AlarmClock.EXTRA_MINUTES, minute)
+                            putExtra(AlarmClock.EXTRA_MESSAGE, "Minimal Alarm ($dayLabel)")
+                            putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(intent)
+                    } catch (_: Exception) {}
+                    showAlarmDialog = false
+                    onDismiss()
+                }
+            )
         }
     }
 }

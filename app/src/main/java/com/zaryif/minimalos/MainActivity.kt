@@ -303,6 +303,7 @@ fun MinimalAppContent(
     if (showMemoSheet) {
         MinimalMemoSheet(
             storageRepository = storageRepository,
+            executeCommandUseCase = executeCommandUseCase,
             onDismiss = { showMemoSheet = false }
         )
     }

@@ -54,6 +54,9 @@ import androidx.compose.ui.unit.sp
 import com.zaryif.minimalos.data.repository.StorageRepository
 import com.zaryif.minimalos.ui.theme.MinimalBlack
 import com.zaryif.minimalos.ui.theme.MinimalCardBg
+import androidx.compose.material.icons.filled.Timer
+import com.zaryif.minimalos.domain.timer.PomodoroTimerManager
+import com.zaryif.minimalos.domain.usecase.ExecuteCommandUseCase
 import com.zaryif.minimalos.ui.theme.MinimalDarkCardBg
 import com.zaryif.minimalos.ui.theme.MinimalDarkGray
 import com.zaryif.minimalos.ui.theme.MinimalGray
@@ -65,6 +68,7 @@ import com.zaryif.minimalos.ui.theme.MinimalWhite
 @Composable
 fun MinimalMemoSheet(
     storageRepository: StorageRepository,
+    executeCommandUseCase: ExecuteCommandUseCase? = null,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -73,6 +77,7 @@ fun MinimalMemoSheet(
     var selectedTab by remember { mutableStateOf("TO-DO") }
     var searchQuery by remember { mutableStateOf("") }
     var newItemText by remember { mutableStateOf("") }
+    var showCustomTimerDialog by remember { mutableStateOf(false) }
 
     val filteredTodos = remember(todos, searchQuery) {
         if (searchQuery.isBlank()) todos
@@ -87,7 +92,13 @@ fun MinimalMemoSheet(
     fun submitNewItem() {
         val trimmed = newItemText.trim()
         if (trimmed.isNotEmpty()) {
-            if (selectedTab == "TO-DO") {
+            if (trimmed.startsWith("+")) {
+                executeCommandUseCase?.execute(trimmed)
+            } else if (trimmed.startsWith("timer ", ignoreCase = true)) {
+                executeCommandUseCase?.execute("+" + trimmed.removePrefix("timer ").trim())
+            } else if (trimmed.startsWith("pomo", ignoreCase = true)) {
+                executeCommandUseCase?.execute("+pomo")
+            } else if (selectedTab == "TO-DO") {
                 storageRepository.addTodo(trimmed)
             } else {
                 storageRepository.addNote(trimmed)
@@ -108,7 +119,7 @@ fun MinimalMemoSheet(
                 .fillMaxHeight(0.9f)
                 .padding(horizontal = 20.dp, vertical = 20.dp)
         ) {
-            // Header
+            // Header with title and + TIMER shortcut
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -120,12 +131,40 @@ fun MinimalMemoSheet(
                     fontWeight = FontWeight.Bold,
                     color = MinimalWhite
                 )
-                IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = MinimalGray
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(MinimalDarkCardBg)
+                            .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
+                            .clickable { showCustomTimerDialog = true }
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Timer,
+                                contentDescription = "Set Timer",
+                                tint = MinimalRed,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "+ TIMER",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MinimalWhite
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = MinimalGray
+                        )
+                    }
                 }
             }
 
@@ -304,6 +343,20 @@ fun MinimalMemoSheet(
                                     modifier = Modifier.weight(1f)
                                 )
                                 IconButton(
+                                    onClick = {
+                                        executeCommandUseCase?.execute("+25m")
+                                        PomodoroTimerManager.start(25 * 60, item.title)
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Timer,
+                                        contentDescription = "Start Focus Timer",
+                                        tint = MinimalRed,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                IconButton(
                                     onClick = { storageRepository.deleteTodo(item.id) },
                                     modifier = Modifier.size(28.dp)
                                 ) {
@@ -369,6 +422,18 @@ fun MinimalMemoSheet(
                     }
                 }
             }
+        }
+
+        if (showCustomTimerDialog) {
+            CustomTimerDurationDialog(
+                initialMinutes = 10,
+                onDismiss = { showCustomTimerDialog = false },
+                onSetTimer = { seconds, label ->
+                    executeCommandUseCase?.execute("+${seconds}s")
+                    PomodoroTimerManager.start(seconds, label)
+                    showCustomTimerDialog = false
+                }
+            )
         }
     }
 }
