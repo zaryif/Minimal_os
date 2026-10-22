@@ -1422,7 +1422,7 @@ fun SettingsScreen(
                                 Text(text = "REPLAY", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MinimalRed)
                             }
                         },
-                        onClick = { onNavigateToOnboarding() }
+                        onClick = { showOnboardingModal = true }
                     )
 
                     SettingsInsetDivider()
