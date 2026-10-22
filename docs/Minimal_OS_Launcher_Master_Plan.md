@@ -28,7 +28,7 @@ Minimal OS Launcher is an **intentional, text-first, terminal-inspired Android h
 ### Core Philosophy
 - **Type to do things:** A single unified line of text replaces hunting through nested graphical app menus.
 - **One hub for everything:** Messages, calls, emails, and notifications unified with zero tracking.
-- **Restrictions by design:** Monk mode, focus mode, and unrestricted mode to enforce digital discipline.
+- **Intentional by design:** Reclaim attention through text-first interaction, anti-dopamine layouts, and customizable focus.
 - **Zero visual noise:** High-contrast monochromatic typography, adaptive luminance, and zero emojis.
 
 ---
@@ -78,7 +78,7 @@ Minimal OS Launcher is an **intentional, text-first, terminal-inspired Android h
 - Handcrafted Theme Engine (7 themes) with `MinimalOnAccent` adaptive contrast engine
 - App Drawer with instant search, favorites pinning, and app hiding
 - Unified Notification Hub with category filtering
-- Restriction modes (Monk, Focus, Unrestricted)
+- Interactive Setup Wizard with live theme selection and preference customization
 - Replayable onboarding wizard accessible from Settings
 
 #### Out of Scope (v1.7.8)
@@ -144,7 +144,7 @@ Minimal OS Launcher is architected around **Clean Architecture + Unidirectional 
 com.zaryif.minimalos
 ├── data
 │   ├── model          # Note, Todo, Notification, App, Theme models
-│   ├── preferences    # Jetpack DataStore preferences (Theme, Restrictions, Aliases, History)
+│   ├── preferences    # Jetpack DataStore preferences (Theme, Home Widgets, Aliases, History)
 │   ├── repository     # StorageRepository, ContactRepository, NotificationRepository
 │   └── service        # NotificationListenerService
 ├── domain
@@ -172,7 +172,7 @@ com.zaryif.minimalos
 | **M1: Foundation** | Project setup, Gradle configuration, Theme System | `build.gradle.kts`, Color/Type/Theme | Complete |
 | **M2: Core Features** | Command bar grammar, Execution engine, Home screen | `HomeScreen`, `CommandBar`, `ExecuteCommandUseCase` | Complete |
 | **M3: App Drawer & Hub** | PackageManager query, Notification service, Hub UI | `AppDrawerScreen`, `HubScreen`, `MinimalNotificationService` | Complete |
-| **M4: Modes & Mini Apps** | Restriction modes, Settings, Memo/Clock/Ask sheets | `SettingsScreen`, `MiniAppsSheets`, `StorageRepository` | Complete |
+| **M4: Settings & Mini Apps** | Settings Screen, Memo/Clock/Ask sheets, Storage | `SettingsScreen`, `MiniAppsSheets`, `StorageRepository` | Complete |
 | **M5: Onboarding & Specs** | 5-step wizard, BRD, SRS, SAD, MIS documentation | `OnboardingScreen`, Complete `docs/` suite | Complete |
 | **M6: Widgets Deck & Live Countdowns** | Modular Widgets Deck, Home Live Pomodoro & Alarm widgets | `WidgetsDeckScreen`, `PomodoroTimerManager`, Live widgets | Complete |
 | **M7: Theme Engine & Adaptive Contrast** | 7 bespoke themes, `MinimalOnAccent` luminance engine | Adaptive WCAG AAA contrast, Nordic Snow contrast engine | Complete |
@@ -201,16 +201,15 @@ com.zaryif.minimalos
 | _(app name)_ | Search Apps | `spotify` | Finds and launches Spotify |
 | _(query)_ | Web Search | `weather today` | Searches query in default browser |
 
-### 6.2 Restriction Mode Comparison
+### 6.2 Interactive Setup Wizard & Onboarding
 
-| Feature | Monk Mode | Focus Mode | Unrestricted |
-|---------|-----------|------------|--------------|
-| Essential apps | Yes | Yes | Yes |
-| All installed apps | No | Yes (with timer) | Yes |
-| Grayscale overlay | Yes (Always) | No | No |
-| App time limits | N/A | Yes (Configurable) | No |
-| Notification filtering | Yes (Essentials only) | Yes (All with badges) | Yes (All) |
-| Social media access | Blocked | Timed | Full |
+| Step | Focus Area | User Value |
+|------|------------|------------|
+| 1. Welcome & Philosophy | Digital minimalism, text-first paradigm | Understands why Minimal OS exists and how it reclaims time |
+| 2. The Command Box | Unified terminal shortcuts (`uninstall`, `assistant`, `yt`, `pomo`, symbols) | Learns to execute daily actions in under 2 seconds |
+| 3. Widgets Deck | Live Alarm Countdown, Live Pomodoro, Minimal Memo, AppWidgetHost | Discovers modular productivity utilities without icon clutter |
+| 4. Notification Hub | Category-filtered notification stream | Single calm place to review alerts one swipe right |
+| 5. Setup Wizard | Live theme picker, home widget toggles, history switch, assistant | Personalizes launcher preferences immediately before home screen |
 
 ### 6.3 Hub Notification Categories
 

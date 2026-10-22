@@ -39,7 +39,7 @@ With version 1.7.8, Minimal OS expands its unified command-line interface to sup
 - Home Screen Live Widgets: Live Alarm Countdown Widget and Live Pomodoro Widget.
 - Handcrafted Themes: 7 bespoke palettes with `MinimalOnAccent` adaptive contrast engine.
 - Unified Notification Hub: Grouping notifications into filter categories with zero telemetry.
-- Restriction Modes: Monk Mode, Focus Mode, and Unrestricted Mode.
+- Interactive Setup Wizard: Personalizing theme, home live widgets, terminal history, and default AI assistant directly on onboarding or via Settings.
 - Re-openable Onboarding Wizard: Accessible during initial setup and replayable anytime from Settings.
 
 #### 4.2 Out-of-Scope (v1.7.8)

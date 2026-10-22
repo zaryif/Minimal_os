@@ -67,15 +67,16 @@
 - **FR-THEME-01:** 7 curated themes: AMOLED Crimson, Apple Space Gray, Nordic Snow, Rabbit Amber, Matrix Forest, Midnight Obsidian, Titanium Purple.
 - **FR-THEME-02 (Adaptive Luminance):** `MinimalOnAccent` calculates background luminance. On pure white accents (Nordic Snow), text renders in pure black (`#000000`), guaranteeing WCAG AAA legibility.
 
-#### 1.7 Restriction Modes (FR-RESTRICT)
-- **FR-RESTRICT-01:** Monk Mode: Essentials only, grayscale enforcement.
-- **FR-RESTRICT-02:** Focus Mode: Distracting apps on usage timers.
-- **FR-RESTRICT-03:** Unrestricted: Full access without restrictions.
-
-#### 1.8 Onboarding Wizard (FR-ONBOARD)
-- **FR-ONBOARD-01:** 5-step introductory wizard on initial launch.
-- **FR-ONBOARD-02:** Store completion state in `UserPreferences`.
-- **FR-ONBOARD-03:** Replay onboarding option accessible at any time from Settings.
+#### 1.7 Interactive Setup Wizard & Onboarding (FR-ONBOARD)
+- **FR-ONBOARD-01:** 5-step introductory wizard on initial launch:
+  1. Welcome & Digital Minimalism Philosophy.
+  2. The Unified Command Box (uninstallation, AI routing, YouTube search, Pomodoro, symbol shortcuts).
+  3. Widgets Deck & Live Countdowns (Alarm countdown, Pomodoro widget, Minimal Memo, AppWidgetHost).
+  4. Unified Notification Hub (One swipe right, category filters).
+  5. Setup Wizard (Live theme selector, home live widgets toggles, terminal history switch, digital assistant selector).
+- **FR-ONBOARD-02:** Live theme switching in Setup Wizard immediately updates active theme palette.
+- **FR-ONBOARD-03:** Store completion state and all customized preferences in `UserPreferences`.
+- **FR-ONBOARD-04:** Replay onboarding option accessible at any time from Settings.
 
 ---
 

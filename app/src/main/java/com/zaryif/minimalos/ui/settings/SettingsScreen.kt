@@ -2134,6 +2134,7 @@ fun SettingsScreen(
                         .background(MinimalBlack)
                 ) {
                     OnboardingScreen(
+                        userPreferences = userPreferences,
                         onFinish = {
                             scope.launch {
                                 userPreferences.setOnboardingCompleted(true)

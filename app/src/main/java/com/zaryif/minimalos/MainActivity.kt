@@ -232,7 +232,8 @@ fun MinimalAppContent(
         when (screen) {
             ScreenState.ONBOARDING -> {
                 OnboardingScreen(
-                    onFinish = { mode ->
+                    userPreferences = userPreferences,
+                    onFinish = {
                         scope.launch {
                             userPreferences.setOnboardingCompleted(true)
                         }

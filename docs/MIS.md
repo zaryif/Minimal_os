@@ -15,7 +15,7 @@ The project delivery follows an agile, sprint-based release progression:
 | **M1: Foundation** | Project setup, Gradle configuration, Theme & Design System | `settings.gradle.kts`, `build.gradle.kts`, Color/Type/Theme | Complete |
 | **M2: Core Features** | Command bar grammar, Execution engine, Home screen | `HomeScreen`, `CommandBar`, `ExecuteCommandUseCase` | Complete |
 | **M3: App Drawer & Hub** | PackageManager query, Notification service, Hub UI | `AppDrawerScreen`, `HubScreen`, `MinimalNotificationService` | Complete |
-| **M4: Modes & Mini Apps** | Restriction modes, Settings, Memo/Clock/Ask sheets | `SettingsScreen`, `MiniAppsSheets`, `StorageRepository` | Complete |
+| **M4: Settings & Mini Apps** | Settings Screen, Memo/Clock/Ask sheets, Storage | `SettingsScreen`, `MiniAppsSheets`, `StorageRepository` | Complete |
 | **M5: Onboarding & Specs** | 5-step wizard, BRD, SRS, SAD, MIS documentation | `OnboardingScreen`, Complete `docs/` suite | Complete |
 | **M6: Widgets Deck & Live Countdowns** | Modular Widgets Deck, Home Live Pomodoro & Alarm widgets | `WidgetsDeckScreen`, `PomodoroTimerManager`, Live widgets | Complete |
 | **M7: Theme Engine & Adaptive Contrast** | 7 bespoke themes, `MinimalOnAccent` luminance engine | Adaptive WCAG AAA contrast, Nordic Snow contrast engine | Complete |

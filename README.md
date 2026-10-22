@@ -21,7 +21,7 @@
 
 ## Visual Overview
 
-| 1. Your Apps | 2. Minimal Ask | 3. Command Bar | 4. Notification Hub | 5. Restrictions |
+| 1. Your Apps | 2. Minimal Ask | 3. Command Bar | 4. Notification Hub | 5. Setup Wizard |
 |:---:|:---:|:---:|:---:|:---:|
 | <img src="screenshot/03F4F184-35F3-430D-B353-1B753FA0892A.PNG" width="160"/> | <img src="screenshot/07A9A71C-F7E4-40D7-B216-357554EE58A8.PNG" width="160"/> | <img src="screenshot/16F82F2C-C4CD-488A-9C0D-A311AE745880.PNG" width="160"/> | <img src="screenshot/227BA325-9E2F-48AD-A9B7-CA84D707FA01.PNG" width="160"/> | <img src="screenshot/443F9313-5212-4D83-AC25-90ECE083B0E2.PNG" width="160"/> |
 
@@ -119,12 +119,14 @@ Stop hopping between 10 different notification shades and apps. The Hub aggregat
 
 ---
 
-## 4. Digital Diet & Restriction Modes
+## 4. Interactive Setup Wizard & Onboarding
 
-Take back control of your screen time with hardware-like restriction profiles:
-- **Monk Mode**: Ultra-restricted. Only essential phone tools, SMS, and clock are accessible. Eliminates distraction at the root.
-- **Focus Mode**: Work mode. Distracting apps are restricted or placed on timed timers.
-- **Unrestricted Mode**: All apps accessible when you need full freedom.
+Minimal OS includes a comprehensive 5-step onboarding walkthrough designed to introduce new users to the launcher's powers and let them customize their experience immediately:
+- **Core Principles & Philosophy**: Clear overview of typography-first minimalism, anti-dopamine layouts, and zero telemetry.
+- **Unified Command Box Deep Dive**: Interactive showcase of native uninstallation (`uninstall <app>`), AI routing (`assistant <query>`), YouTube search (`yt <query>`), natural Pomodoro (`pomo 50m`), and symbol shortcuts.
+- **Widgets Deck & Live Countdowns**: Introduction to the Live Alarm Countdown Widget, Live Pomodoro Timer, Minimal Memo, and AppWidgetHost.
+- **Unified Notification Hub**: Guide to filtering messages, calls, and emails in a single calm stream.
+- **Interactive Setup Wizard**: Allows users to pick their starting theme from the 7 handcrafted palettes, toggle home live widgets, enable/disable terminal command history, and select their preferred AI assistant. Replayable anytime in **Settings -> Replay Onboarding**.
 
 ---
 
