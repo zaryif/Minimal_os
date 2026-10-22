@@ -49,6 +49,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.ui.platform.LocalContext
+import com.zaryif.minimalos.util.AlarmClockPermissionHelper
 import androidx.compose.ui.res.painterResource
 import com.zaryif.minimalos.R
 import androidx.compose.runtime.Composable
@@ -625,10 +627,11 @@ private fun StepSetupWizard(
     userPreferences: UserPreferences,
     onFinish: () -> Unit
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     var selectedThemeId by remember { mutableStateOf("AMOLED_RED") }
-    var enableAlarmCountdown by remember { mutableStateOf(true) }
+    var enableAlarmCountdown by remember { mutableStateOf(false) }
     var enablePomodoroWidget by remember { mutableStateOf(true) }
     var enableTodosWidget by remember { mutableStateOf(true) }
     var enableNotesWidget by remember { mutableStateOf(false) }
@@ -797,7 +800,12 @@ private fun StepSetupWizard(
             title = "Live Alarm Countdown",
             subtitle = "Displays exact countdown to next system alarm on home",
             checked = enableAlarmCountdown,
-            onCheckedChange = { enableAlarmCountdown = it }
+            onCheckedChange = { checked ->
+                enableAlarmCountdown = checked
+                if (checked && !AlarmClockPermissionHelper.canScheduleExactAlarms(context)) {
+                    AlarmClockPermissionHelper.requestExactAlarmPermission(context)
+                }
+            }
         )
         Spacer(modifier = Modifier.height(6.dp))
 

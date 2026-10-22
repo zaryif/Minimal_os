@@ -50,6 +50,7 @@ import com.zaryif.minimalos.domain.timer.PomodoroTimerManager
 import android.app.AlarmManager
 import android.content.Context
 import androidx.compose.ui.platform.LocalContext
+import com.zaryif.minimalos.util.AlarmClockPermissionHelper
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableLongStateOf
@@ -517,11 +518,14 @@ fun MinimalHomeAlarmCountdownWidget(
     val context = LocalContext.current
     var triggerTime by remember { mutableLongStateOf(0L) }
     var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var hasExactPermission by remember {
+        mutableStateOf(AlarmClockPermissionHelper.canScheduleExactAlarms(context))
+    }
 
     LaunchedEffect(Unit) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
         while (true) {
-            triggerTime = alarmManager?.nextAlarmClock?.triggerTime ?: 0L
+            hasExactPermission = AlarmClockPermissionHelper.canScheduleExactAlarms(context)
+            triggerTime = AlarmClockPermissionHelper.getNextAlarmTriggerTime(context)
             currentTime = System.currentTimeMillis()
             delay(1000)
         }
@@ -558,8 +562,20 @@ fun MinimalHomeAlarmCountdownWidget(
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(MinimalCardBg)
-            .border(1.dp, if (hasAlarm) MinimalRed.copy(alpha = 0.5f) else MinimalDarkGray.copy(alpha = 0.7f), RoundedCornerShape(14.dp))
-            .clickable { onOpenClock() }
+            .border(
+                1.dp,
+                if (hasAlarm) MinimalRed.copy(alpha = 0.5f)
+                else if (!hasExactPermission) MinimalRed.copy(alpha = 0.4f)
+                else MinimalDarkGray.copy(alpha = 0.7f),
+                RoundedCornerShape(14.dp)
+            )
+            .clickable {
+                if (!hasExactPermission) {
+                    AlarmClockPermissionHelper.requestExactAlarmPermission(context)
+                } else {
+                    onOpenClock()
+                }
+            }
             .padding(16.dp)
     ) {
         if (hasAlarm) {
@@ -625,6 +641,54 @@ fun MinimalHomeAlarmCountdownWidget(
                     fontSize = 12.sp,
                     color = MinimalGray
                 )
+            }
+        } else if (!hasExactPermission) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Alarm,
+                        contentDescription = null,
+                        tint = MinimalRed,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "CLOCK PERMISSION NEEDED",
+                            fontFamily = AppleSanFranciscoFontFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MinimalRed,
+                            letterSpacing = 0.5.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Tap to grant exact alarm permission",
+                            fontFamily = AppleSanFranciscoFontFamily,
+                            fontSize = 12.sp,
+                            color = MinimalGray
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(MinimalDarkCardBg)
+                        .border(0.5.dp, MinimalRed.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 7.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "GRANT",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MinimalRed
+                    )
+                }
             }
         } else {
             Row(

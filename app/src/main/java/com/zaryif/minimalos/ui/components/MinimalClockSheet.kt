@@ -2,6 +2,7 @@ package com.zaryif.minimalos.ui.components
 
 import android.content.Intent
 import android.provider.AlarmClock
+import com.zaryif.minimalos.util.AlarmClockPermissionHelper
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -157,15 +158,7 @@ fun MinimalClockSheet(
                 onDismiss = { showTimerDialog = false },
                 onSetTimer = { seconds, label ->
                     PomodoroTimerManager.start(seconds, label)
-                    try {
-                        val intent = Intent(AlarmClock.ACTION_SET_TIMER).apply {
-                            putExtra(AlarmClock.EXTRA_LENGTH, seconds)
-                            putExtra(AlarmClock.EXTRA_MESSAGE, "Minimal Timer")
-                            putExtra(AlarmClock.EXTRA_SKIP_UI, true)
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        }
-                        context.startActivity(intent)
-                    } catch (_: Exception) {}
+                    AlarmClockPermissionHelper.setTimer(context, seconds, "Minimal Timer")
                     showTimerDialog = false
                     onDismiss()
                 }
@@ -180,16 +173,7 @@ fun MinimalClockSheet(
                 onDismiss = { showAlarmDialog = false },
                 onConfirm = { hour, minute, amPm, dayLabel ->
                     val finalHour = if (amPm == "PM" && hour < 12) hour + 12 else if (amPm == "AM" && hour == 12) 0 else hour
-                    try {
-                        val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
-                            putExtra(AlarmClock.EXTRA_HOUR, finalHour)
-                            putExtra(AlarmClock.EXTRA_MINUTES, minute)
-                            putExtra(AlarmClock.EXTRA_MESSAGE, "Minimal Alarm ($dayLabel)")
-                            putExtra(AlarmClock.EXTRA_SKIP_UI, true)
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        }
-                        context.startActivity(intent)
-                    } catch (_: Exception) {}
+                    AlarmClockPermissionHelper.setAlarm(context, finalHour, minute, "Minimal Alarm ($dayLabel)")
                     showAlarmDialog = false
                     onDismiss()
                 }

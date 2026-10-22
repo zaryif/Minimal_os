@@ -4,6 +4,7 @@ import android.app.WallpaperManager
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import com.zaryif.minimalos.util.AlarmClockPermissionHelper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -800,6 +801,9 @@ fun SettingsScreen(
                                                 .background(MinimalDarkCardBg)
                                                 .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
                                                 .clickable {
+                                                    if (key == "ALARM_COUNTDOWN" && !AlarmClockPermissionHelper.canScheduleExactAlarms(context)) {
+                                                        AlarmClockPermissionHelper.requestExactAlarmPermission(context)
+                                                    }
                                                     scope.launch { userPreferences.setHomeWidgets((homeWidgets + key).distinct()) }
                                                 }
                                                 .padding(horizontal = 8.dp, vertical = 4.dp)

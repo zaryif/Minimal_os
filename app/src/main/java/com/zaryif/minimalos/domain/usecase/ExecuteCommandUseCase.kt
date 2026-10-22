@@ -9,6 +9,7 @@ import android.net.Uri
 import android.provider.AlarmClock
 import android.provider.CalendarContract
 import androidx.core.content.ContextCompat
+import com.zaryif.minimalos.util.AlarmClockPermissionHelper
 import com.zaryif.minimalos.data.preferences.AiProvider
 import com.zaryif.minimalos.data.preferences.UserPreferences
 import com.zaryif.minimalos.data.repository.AppRepository
@@ -506,15 +507,7 @@ class ExecuteCommandUseCase(
         val remainingSec = seconds % 60
         val timeLabel = if (remainingSec > 0) "${minutes}m ${remainingSec}s" else "${minutes}m"
 
-        val intent = Intent(AlarmClock.ACTION_SET_TIMER).apply {
-            putExtra(AlarmClock.EXTRA_LENGTH, seconds)
-            putExtra(AlarmClock.EXTRA_MESSAGE, "Pomodoro Focus")
-            putExtra(AlarmClock.EXTRA_SKIP_UI, true)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        try {
-            context.startActivity(intent)
-        } catch (_: Exception) {}
+        AlarmClockPermissionHelper.setTimer(context, seconds, "Pomodoro Focus")
 
         return CommandResult.Success("Live Pomodoro started: $timeLabel focus")
     }
@@ -530,18 +523,9 @@ class ExecuteCommandUseCase(
         val remainingSec = seconds % 60
         val timeLabel = if (remainingSec > 0) "${minutes}m ${remainingSec}s" else "${minutes}m"
 
-        val intent = Intent(AlarmClock.ACTION_SET_TIMER).apply {
-            putExtra(AlarmClock.EXTRA_LENGTH, seconds)
-            putExtra(AlarmClock.EXTRA_MESSAGE, "Minimal Timer")
-            putExtra(AlarmClock.EXTRA_SKIP_UI, true)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        return try {
-            context.startActivity(intent)
-            CommandResult.Success("Live timer started: $timeLabel")
-        } catch (_: Exception) {
-            CommandResult.Success("Live timer started: $timeLabel")
-        }
+        AlarmClockPermissionHelper.setTimer(context, seconds, "Minimal Timer")
+
+        return CommandResult.Success("Live timer started: $timeLabel")
     }
 
     private fun handleAlarm(arg: String): CommandResult {
@@ -549,25 +533,11 @@ class ExecuteCommandUseCase(
         val hour = parsed.hour
         val minute = parsed.minute
 
-        // Silent direct alarm execution with EXTRA_SKIP_UI = true
-        val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
-            putExtra(AlarmClock.EXTRA_HOUR, hour)
-            putExtra(AlarmClock.EXTRA_MINUTES, minute)
-            putExtra(AlarmClock.EXTRA_MESSAGE, "Minimal Alarm")
-            putExtra(AlarmClock.EXTRA_SKIP_UI, true)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        return try {
-            context.startActivity(intent)
-            CommandResult.Success("Alarm set for %02d:%02d (auto)".format(hour, minute))
-        } catch (_: Exception) {
-            intent.putExtra(AlarmClock.EXTRA_SKIP_UI, false)
-            try {
-                context.startActivity(intent)
-                CommandResult.Success("Alarm set for %02d:%02d".format(hour, minute))
-            } catch (e: Exception) {
-                CommandResult.Error("Could not set alarm: ${e.message}")
-            }
+        val result = AlarmClockPermissionHelper.setAlarm(context, hour, minute, "Minimal Alarm")
+        return if (result.isSuccess) {
+            CommandResult.Success("Alarm set for %02d:%02d".format(hour, minute))
+        } else {
+            CommandResult.Error("Could not set alarm: ${result.exceptionOrNull()?.message}")
         }
     }
 
