@@ -3,7 +3,7 @@
 
 **Author:** MD. Zarif Azfar  
 **Date:** October 22, 2026  
-**Version:** 1.7.8  
+**Version:** 1.7.9  
 
 ---
 
@@ -18,6 +18,7 @@
 - **FR-HOME-06:** System shall provide quick header shortcuts to Minimal Ask, Clock, Memo, and Settings.
 - **FR-HOME-07:** System shall provide configurable Home Screen Live Widgets (Live Pomodoro Countdown Widget and Live Alarm Countdown Widget).
 - **FR-HOME-08:** Live Alarm Countdown Widget shall query the next scheduled system alarm via `AlarmManager.getNextAlarmClock()` and compute real-time remaining countdown.
+- **FR-HOME-09:** Live Pomodoro Countdown Widget shall feature single-instance deduplication (suppressing redundant floating live cards when pinned to home widgets) and provide an in-card custom duration selector.
 
 #### 1.2 Command Bar & Execution Engine (FR-CMD)
 - **FR-CMD-01 (Direct SMS):** Symbol `@` or keyword `msg`/`sms` + text -> Dispatch SMS composition intent to recipient or body.

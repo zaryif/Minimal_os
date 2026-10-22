@@ -3,7 +3,7 @@
 
 **Author:** MD. Zarif Azfar  
 **Date:** October 22, 2026  
-**Version:** 1.7.8  
+**Version:** 1.7.9  
 
 ---
 

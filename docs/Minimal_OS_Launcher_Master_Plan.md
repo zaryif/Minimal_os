@@ -1,7 +1,7 @@
 # Minimal OS Launcher — Master Plan & Documentation
 
 > **Project:** Minimal OS Launcher (Minimal OS)  
-> **Version:** 1.7.8  
+> **Version:** 1.7.9  
 > **Author:** MD. Zarif Azfar  
 > **Date:** October 22, 2026  
 > **Repository:** `github.com/zaryif/Minimal_os`  
@@ -65,8 +65,10 @@ Minimal OS Launcher is an **intentional, text-first, terminal-inspired Android h
 
 ### 2.4 Scope
 
-#### In Scope (v1.7.8)
+#### In Scope (v1.7.9)
 - Complete Home screen replacement with live clock and localized date
+- Home Screen Pomodoro Deduplication preventing duplicate cards when active
+- Quick Custom Duration selector button directly on Home Pomodoro widget
 - Unified Command Bar with 11 symbol prefixes and natural-language keyword recognition
 - App Uninstallation via command (`uninstall <app>`, `/<app>`) with interactive suggestion badges
 - AI Assistant dispatch (`assistant <prompt>`, `?<prompt>`) to Gemini, ChatGPT, Claude, Copilot
@@ -81,7 +83,7 @@ Minimal OS Launcher is an **intentional, text-first, terminal-inspired Android h
 - Interactive Setup Wizard with live theme selection and preference customization
 - Replayable onboarding wizard accessible from Settings
 
-#### Out of Scope (v1.7.8)
+#### Out of Scope (v1.7.9)
 - Cloud-based account synchronization (data remains strictly local)
 - Closed-source analytics SDKs or advertising networks
 
@@ -177,6 +179,7 @@ com.zaryif.minimalos
 | **M6: Widgets Deck & Live Countdowns** | Modular Widgets Deck, Home Live Pomodoro & Alarm widgets | `WidgetsDeckScreen`, `PomodoroTimerManager`, Live widgets | Complete |
 | **M7: Theme Engine & Adaptive Contrast** | 7 bespoke themes, `MinimalOnAccent` luminance engine | Adaptive WCAG AAA contrast, Nordic Snow contrast engine | Complete |
 | **M8: Power Commands & Terminal Logging (v1.7.8)** | `uninstall <app>`, `assistant <prompt>`, `yt <query>`, `pomo <duration>`, markdown history download, zero-emoji policy | Terminal history SAF exporter, zero-emoji verification, v1.7.8 release | Complete |
+| **M9: Widget Deduplication & Quick Duration (v1.7.9)** | Home Screen Pomodoro deduplication, custom duration button on home card, distinct widget storage | Single-instance Pomodoro enforcement, DataStore distinct filter, v1.7.9 release | Complete |
 
 ---
 
@@ -275,7 +278,7 @@ Minimal_os/
 
 ### 8.2 Release Strategy
 1. **Build:** GitHub Actions auto-builds debug and release APKs on every tag push.
-2. **Tag:** Release tagged with semantic versioning (`v1.7.8`).
+2. **Tag:** Release tagged with semantic versioning (`v1.7.9`).
 3. **Distribution:** Published directly on GitHub Releases page.
 
 ---

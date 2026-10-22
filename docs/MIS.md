@@ -3,7 +3,7 @@
 
 **Author:** MD. Zarif Azfar  
 **Date:** October 22, 2026  
-**Version:** 1.7.8  
+**Version:** 1.7.9  
 
 ---
 
@@ -20,6 +20,7 @@ The project delivery follows an agile, sprint-based release progression:
 | **M6: Widgets Deck & Live Countdowns** | Modular Widgets Deck, Home Live Pomodoro & Alarm widgets | `WidgetsDeckScreen`, `PomodoroTimerManager`, Live widgets | Complete |
 | **M7: Theme Engine & Adaptive Contrast** | 7 bespoke themes, `MinimalOnAccent` luminance engine | Adaptive WCAG AAA contrast, Nordic Snow contrast engine | Complete |
 | **M8: Power Commands & Terminal Logging (v1.7.8)** | `uninstall <app>`, `assistant <prompt>`, `yt <query>`, `pomo <duration>`, markdown history download, zero-emoji policy | Terminal history SAF exporter, zero-emoji verification, v1.7.8 release | Complete |
+| **M9: Widget Deduplication & Quick Duration (v1.7.9)** | Home Screen Pomodoro deduplication, custom duration button on home card, distinct widget storage | Single-instance Pomodoro enforcement, DataStore distinct filter, v1.7.9 release | Complete |
 
 ---
 
