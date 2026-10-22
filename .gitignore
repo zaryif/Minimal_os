@@ -14,5 +14,8 @@ local.properties
 *.aab
 *.jks
 *.keystore
+keystore.properties
+play-service-account*.json
 .vscode/
 .kotlin/
+
