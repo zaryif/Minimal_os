@@ -90,7 +90,7 @@ class UserPreferences(private val context: Context) {
             if (str.isNullOrBlank()) {
                 DEFAULT_HOME_WIDGETS
             } else {
-                str.split(",").filter { it.isNotBlank() }
+                str.split(",").filter { it.isNotBlank() }.distinct()
             }
         }
 
@@ -177,7 +177,7 @@ class UserPreferences(private val context: Context) {
 
     suspend fun setHomeWidgets(widgets: List<String>) {
         context.dataStore.edit { prefs ->
-            prefs[HOME_WIDGETS_LIST] = widgets.joinToString(",")
+            prefs[HOME_WIDGETS_LIST] = widgets.distinct().joinToString(",")
         }
     }
 

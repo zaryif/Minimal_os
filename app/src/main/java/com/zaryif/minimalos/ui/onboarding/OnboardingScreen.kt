@@ -644,7 +644,7 @@ private fun StepSetupWizard(
             if (enableNotesWidget) widgets.add("NOTES")
             widgets.add("CALENDAR")
             widgets.add("SHORTCUTS")
-            userPreferences.setHomeWidgets(widgets)
+            userPreferences.setHomeWidgets(widgets.distinct())
 
             // 3. Command History
             userPreferences.setCommandHistoryEnabled(enableCommandHistory)

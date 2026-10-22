@@ -85,11 +85,13 @@ fun MinimalDynamicHomeWidgets(
     onDeleteHomeWidget: ((Int) -> Unit)?,
     modifier: Modifier = Modifier
 ) {
+    var pomodoroWidgetRendered = false
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        widgetsOrder.forEach { widgetKey ->
+        widgetsOrder.distinct().forEach { widgetKey ->
             when (widgetKey) {
                 "TODOS" -> {
                     MinimalHomeTodosWidget(
@@ -121,7 +123,10 @@ fun MinimalDynamicHomeWidgets(
                 }
 
                 "POMODORO", "TIMERS", "LIVE_TIMER" -> {
-                    MinimalHomePomodoroWidget()
+                    if (!pomodoroWidgetRendered) {
+                        pomodoroWidgetRendered = true
+                        MinimalHomePomodoroWidget()
+                    }
                 }
 
                 "SHORTCUTS" -> {
@@ -673,6 +678,8 @@ fun MinimalHomePomodoroWidget(
     val remainingSeconds by PomodoroTimerManager.remainingSeconds.collectAsState()
     val isBreak by PomodoroTimerManager.isBreakMode.collectAsState()
     val timerLabel by PomodoroTimerManager.timerLabel.collectAsState()
+    val workDuration by PomodoroTimerManager.workDurationSeconds.collectAsState()
+    var showCustomDialog by remember { mutableStateOf(false) }
 
     val mins = remainingSeconds / 60
     val secs = remainingSeconds % 60
@@ -724,6 +731,17 @@ fun MinimalHomePomodoroWidget(
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(
+                    onClick = { showCustomDialog = true },
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Set Custom Duration",
+                        tint = MinimalGray,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                IconButton(
                     onClick = { PomodoroTimerManager.toggle() },
                     modifier = Modifier.size(30.dp)
                 ) {
@@ -747,6 +765,17 @@ fun MinimalHomePomodoroWidget(
                 }
             }
         }
+    }
+
+    if (showCustomDialog) {
+        CustomPomodoroDurationDialog(
+            currentMinutes = workDuration / 60,
+            onDismiss = { showCustomDialog = false },
+            onSave = { mins ->
+                PomodoroTimerManager.setWorkMinutes(mins)
+                showCustomDialog = false
+            }
+        )
     }
 }
 

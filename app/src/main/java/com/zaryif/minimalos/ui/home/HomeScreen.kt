@@ -446,7 +446,11 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.height(14.dp))
 
                         // Live countdown card for active Pomodoro or Timer sessions
-                        MinimalLiveTimerCard(modifier = Modifier.padding(bottom = 12.dp))
+                        // Only display if Pomodoro is not already a configured home widget to avoid duplicate cards
+                        val hasPomodoroHomeWidget = homeWidgetsOrder.any { it in listOf("POMODORO", "TIMERS", "LIVE_TIMER") }
+                        if (!hasPomodoroHomeWidget) {
+                            MinimalLiveTimerCard(modifier = Modifier.padding(bottom = 12.dp))
+                        }
 
                         // Dynamic Customizable Home Screen Widgets
                         MinimalDynamicHomeWidgets(

@@ -797,7 +797,7 @@ fun SettingsScreen(
                                                 .background(MinimalDarkCardBg)
                                                 .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
                                                 .clickable {
-                                                    scope.launch { userPreferences.setHomeWidgets(homeWidgets + key) }
+                                                    scope.launch { userPreferences.setHomeWidgets((homeWidgets + key).distinct()) }
                                                 }
                                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                                         ) {
