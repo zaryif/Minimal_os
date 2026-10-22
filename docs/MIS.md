@@ -3,7 +3,7 @@
 
 **Author:** MD. Zarif Azfar  
 **Date:** October 22, 2026  
-**Version:** 1.7.9  
+**Version:** 1.8.0  
 
 ---
 
@@ -21,6 +21,7 @@ The project delivery follows an agile, sprint-based release progression:
 | **M7: Theme Engine & Adaptive Contrast** | 7 bespoke themes, `MinimalOnAccent` luminance engine | Adaptive WCAG AAA contrast, Nordic Snow contrast engine | Complete |
 | **M8: Power Commands & Terminal Logging (v1.7.8)** | `uninstall <app>`, `assistant <prompt>`, `yt <query>`, `pomo <duration>`, markdown history download, zero-emoji policy | Terminal history SAF exporter, zero-emoji verification, v1.7.8 release | Complete |
 | **M9: Widget Deduplication & Quick Duration (v1.7.9)** | Home Screen Pomodoro deduplication, custom duration button on home card, distinct widget storage | Single-instance Pomodoro enforcement, DataStore distinct filter, v1.7.9 release | Complete |
+| **M10: Branding, Aliases Directory & Alarm Permissions (v1.8.0)** | Official Minimal OS logo & adaptive icon suite across all densities, 148+ aliases reference directory, default off alarm countdown, and automatic exact alarm permission handling | Adaptive icons, ALIASES_AND_SHORTCUTS.md, AlarmClockPermissionHelper, v1.8.0 release | Complete |
 
 ---
 

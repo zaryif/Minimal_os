@@ -1,7 +1,7 @@
 # Minimal OS Launcher — Master Plan & Documentation
 
 > **Project:** Minimal OS Launcher (Minimal OS)  
-> **Version:** 1.7.9  
+> **Version:** 1.8.0  
 > **Author:** MD. Zarif Azfar  
 > **Date:** October 22, 2026  
 > **Repository:** `github.com/zaryif/Minimal_os`  
@@ -65,7 +65,11 @@ Minimal OS Launcher is an **intentional, text-first, terminal-inspired Android h
 
 ### 2.4 Scope
 
-#### In Scope (v1.7.9)
+#### In Scope (v1.8.0)
+- Official Minimal OS branding, app launcher icons, and adaptive icon layers (432px centered within 72dp safe zone)
+- Directory of 148+ custom aliases, Android settings intents, URL search templates, and command macros (`ALIASES_AND_SHORTCUTS.md`)
+- Alarm Clock Countdown widget disabled by default on setup/onboarding for a cleaner home layout
+- Automatic clock and exact alarm permission detection and user grant prompts (`AlarmClockPermissionHelper`) on Android 12 through Android 15+
 - Complete Home screen replacement with live clock and localized date
 - Home Screen Pomodoro Deduplication preventing duplicate cards when active
 - Quick Custom Duration selector button directly on Home Pomodoro widget
@@ -83,7 +87,7 @@ Minimal OS Launcher is an **intentional, text-first, terminal-inspired Android h
 - Interactive Setup Wizard with live theme selection and preference customization
 - Replayable onboarding wizard accessible from Settings
 
-#### Out of Scope (v1.7.9)
+#### Out of Scope (v1.8.0)
 - Cloud-based account synchronization (data remains strictly local)
 - Closed-source analytics SDKs or advertising networks
 
@@ -180,6 +184,7 @@ com.zaryif.minimalos
 | **M7: Theme Engine & Adaptive Contrast** | 7 bespoke themes, `MinimalOnAccent` luminance engine | Adaptive WCAG AAA contrast, Nordic Snow contrast engine | Complete |
 | **M8: Power Commands & Terminal Logging (v1.7.8)** | `uninstall <app>`, `assistant <prompt>`, `yt <query>`, `pomo <duration>`, markdown history download, zero-emoji policy | Terminal history SAF exporter, zero-emoji verification, v1.7.8 release | Complete |
 | **M9: Widget Deduplication & Quick Duration (v1.7.9)** | Home Screen Pomodoro deduplication, custom duration button on home card, distinct widget storage | Single-instance Pomodoro enforcement, DataStore distinct filter, v1.7.9 release | Complete |
+| **M10: Branding, Aliases Directory & Alarm Permissions (v1.8.0)** | Official Minimal OS logo & adaptive icon suite across all densities, 148+ aliases reference directory, default off alarm countdown, and automatic exact alarm permission handling | Adaptive icons, ALIASES_AND_SHORTCUTS.md, AlarmClockPermissionHelper, v1.8.0 release | Complete |
 
 ---
 
@@ -278,7 +283,7 @@ Minimal_os/
 
 ### 8.2 Release Strategy
 1. **Build:** GitHub Actions auto-builds debug and release APKs on every tag push.
-2. **Tag:** Release tagged with semantic versioning (`v1.7.9`).
+2. **Tag:** Release tagged with semantic versioning (`v1.8.0`).
 3. **Distribution:** Published directly on GitHub Releases page.
 
 ---

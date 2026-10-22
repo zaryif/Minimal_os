@@ -3,7 +3,7 @@
 
 **Author:** MD. Zarif Azfar  
 **Date:** October 22, 2026  
-**Version:** 1.7.9  
+**Version:** 1.8.0  
 
 ---
 
@@ -17,7 +17,7 @@
 - **FR-HOME-05:** System shall support swipe-right gesture to transition to the Notification Hub.
 - **FR-HOME-06:** System shall provide quick header shortcuts to Minimal Ask, Clock, Memo, and Settings.
 - **FR-HOME-07:** System shall provide configurable Home Screen Live Widgets (Live Pomodoro Countdown Widget and Live Alarm Countdown Widget).
-- **FR-HOME-08:** Live Alarm Countdown Widget shall query the next scheduled system alarm via `AlarmManager.getNextAlarmClock()` and compute real-time remaining countdown.
+- **FR-HOME-08:** Live Alarm Countdown Widget shall be disabled by default on setup/onboarding. When enabled, it shall safely query the next scheduled system alarm via AlarmClockPermissionHelper and automatically verify/request exact alarm permissions on Android 12+ (API 31+).
 - **FR-HOME-09:** Live Pomodoro Countdown Widget shall feature single-instance deduplication (suppressing redundant floating live cards when pinned to home widgets) and provide an in-card custom duration selector.
 
 #### 1.2 Command Bar & Execution Engine (FR-CMD)
