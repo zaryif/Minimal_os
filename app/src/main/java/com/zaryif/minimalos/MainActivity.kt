@@ -18,6 +18,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
@@ -31,6 +32,7 @@ import com.zaryif.minimalos.ui.components.MinimalClockSheet
 import com.zaryif.minimalos.ui.components.MinimalMemoSheet
 import com.zaryif.minimalos.ui.home.HomeScreen
 import com.zaryif.minimalos.ui.hub.HubScreen
+import com.zaryif.minimalos.ui.onboarding.OnboardingScreen
 import com.zaryif.minimalos.ui.settings.SettingsScreen
 import com.zaryif.minimalos.ui.theme.MinimalBlack
 import com.zaryif.minimalos.ui.theme.MinimalOSTheme
@@ -38,6 +40,7 @@ import com.zaryif.minimalos.ui.widgets.WidgetsDeckScreen
 import kotlinx.coroutines.launch
 
 enum class ScreenState {
+    ONBOARDING,
     HOME,
     APPS,
     HUB,
@@ -204,20 +207,40 @@ fun MinimalAppContent(
 ) {
     val installedApps = remember { appRepository.getInstalledApps() }
     val deckWidgetIds by userPreferences.deckSystemWidgets.collectAsState(initial = emptySet())
+    val onboardingCompleted by userPreferences.onboardingCompleted.collectAsState(initial = null)
+    val scope = rememberCoroutineScope()
 
-    var currentScreen by remember { mutableStateOf(ScreenState.HOME) }
+    var currentScreen by remember { mutableStateOf<ScreenState?>(null) }
+
+    // First time launch: onboardingCompleted is false in DataStore -> opens ONBOARDING
+    val activeScreen = currentScreen ?: when (onboardingCompleted) {
+        false -> ScreenState.ONBOARDING
+        true -> ScreenState.HOME
+        null -> ScreenState.HOME
+    }
 
     // Mini Apps bottom sheet states
     var showMemoSheet by remember { mutableStateOf(false) }
     var showClockSheet by remember { mutableStateOf(false) }
 
-    // Android back button handling returns to Home screen
-    BackHandler(enabled = currentScreen != ScreenState.HOME) {
+    // Android back button handling returns to Home screen (disabled on HOME and during first-time ONBOARDING)
+    BackHandler(enabled = activeScreen != ScreenState.HOME && (activeScreen != ScreenState.ONBOARDING || onboardingCompleted == true)) {
         currentScreen = ScreenState.HOME
     }
 
-    Crossfade(targetState = currentScreen, label = "ScreenTransition") { screen ->
+    Crossfade(targetState = activeScreen, label = "ScreenTransition") { screen ->
         when (screen) {
+            ScreenState.ONBOARDING -> {
+                OnboardingScreen(
+                    onFinish = { mode ->
+                        scope.launch {
+                            userPreferences.setOnboardingCompleted(true)
+                        }
+                        currentScreen = ScreenState.HOME
+                    }
+                )
+            }
+
             ScreenState.HOME -> {
                 HomeScreen(
                     installedApps = installedApps,
@@ -269,6 +292,7 @@ fun MinimalAppContent(
                 SettingsScreen(
                     installedApps = installedApps,
                     userPreferences = userPreferences,
+                    onNavigateToOnboarding = { currentScreen = ScreenState.ONBOARDING },
                     onBack = { currentScreen = ScreenState.HOME }
                 )
             }

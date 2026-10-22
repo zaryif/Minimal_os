@@ -116,6 +116,7 @@ import java.io.File
 fun SettingsScreen(
     installedApps: List<AppInfo>,
     userPreferences: UserPreferences,
+    onNavigateToOnboarding: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -144,7 +145,7 @@ fun SettingsScreen(
     val (appVersionName, appVersionCode) = remember(context) {
         try {
             val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            val vName = pInfo.versionName ?: "1.7.4"
+            val vName = pInfo.versionName ?: "1.7.5"
             val vCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                 pInfo.longVersionCode
             } else {
@@ -153,7 +154,7 @@ fun SettingsScreen(
             }
             vName to vCode
         } catch (_: Exception) {
-            "1.7.4" to 13L
+            "1.7.5" to 14L
         }
     }
 
@@ -1333,7 +1334,33 @@ fun SettingsScreen(
                                 modifier = Modifier.size(18.dp)
                             )
                         },
-                        onClick = { showOnboardingModal = true }
+                        onClick = { onNavigateToOnboarding() }
+                    )
+
+                    SettingsInsetDivider()
+
+                    // 5. Reset Onboarding Experience
+                    SettingsItemRow(
+                        icon = Icons.Default.Clear,
+                        title = "Reset Onboarding Experience",
+                        subtitle = "Clear completed state and restart the 5-step walkthrough",
+                        trailingContent = {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MinimalDarkCardBg)
+                                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 7.dp, vertical = 3.dp)
+                            ) {
+                                Text(text = "RESET", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MinimalRed)
+                            }
+                        },
+                        onClick = {
+                            scope.launch {
+                                userPreferences.setOnboardingCompleted(false)
+                            }
+                            onNavigateToOnboarding()
+                        }
                     )
 
                     SettingsInsetDivider()
