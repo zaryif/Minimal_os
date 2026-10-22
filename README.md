@@ -2,6 +2,9 @@
 
 <div align="center">
 
+<img src="docs/media/logo.png" width="128" height="128" alt="Minimal OS Logo" style="border-radius: 28px;" />
+<br/><br/>
+
 [![Build Minimal OS Launcher APK](https://github.com/zaryif/Minimal_os/actions/workflows/build.yml/badge.svg)](https://github.com/zaryif/Minimal_os/actions/workflows/build.yml)
 [![Latest Release](https://img.shields.io/github/v/release/zaryif/Minimal_os?color=red&label=release)](https://github.com/zaryif/Minimal_os/releases/latest)
 [![Android](https://img.shields.io/badge/Android-8.0%20to%2015-black.svg?logo=android)](https://www.android.com)

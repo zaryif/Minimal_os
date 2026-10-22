@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -48,6 +49,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.ui.res.painterResource
+import com.zaryif.minimalos.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -198,6 +201,15 @@ private fun StepWelcome(onNext: () -> Unit) {
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
+        Image(
+            painter = painterResource(id = R.drawable.app_logo),
+            contentDescription = "Minimal OS Logo",
+            modifier = Modifier
+                .size(76.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .border(1.dp, MinimalDarkGray, RoundedCornerShape(18.dp))
+        )
+        Spacer(modifier = Modifier.height(18.dp))
         Text(
             text = "welcome to\nminimal os",
             fontSize = 32.sp,
