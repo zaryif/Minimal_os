@@ -52,8 +52,10 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Notifications
@@ -90,6 +92,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.zaryif.minimalos.ui.onboarding.OnboardingScreen
 import com.zaryif.minimalos.data.preferences.AiProvider
 import com.zaryif.minimalos.data.preferences.UserPreferences
 import com.zaryif.minimalos.domain.model.AppInfo
@@ -134,6 +138,24 @@ fun SettingsScreen(
     var searchQuery by remember { mutableStateOf("") }
     var showAppPickerModal by remember { mutableStateOf(false) }
     var showAddCommandModal by remember { mutableStateOf(false) }
+    var showAboutModal by remember { mutableStateOf(false) }
+    var showOnboardingModal by remember { mutableStateOf(false) }
+
+    val (appVersionName, appVersionCode) = remember(context) {
+        try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            val vName = pInfo.versionName ?: "1.7.4"
+            val vCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                pInfo.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                pInfo.versionCode.toLong()
+            }
+            vName to vCode
+        } catch (_: Exception) {
+            "1.7.4" to 13L
+        }
+    }
 
     // Section expansion toggles (top-brand accordion style)
     var isThemeExpanded by remember { mutableStateOf(false) }
@@ -1225,15 +1247,19 @@ fun SettingsScreen(
             // =========================================================
             // CATEGORY 6: ABOUT & SYSTEM INFO
             // =========================================================
-            if (q.isEmpty() || "about".contains(q) || "version".contains(q) || "release".contains(q)) {
+            if (q.isEmpty() || "about".contains(q) || "version".contains(q) || "release".contains(q) ||
+                "developer".contains(q) || "author".contains(q) || "zarif".contains(q) ||
+                "coffee".contains(q) || "support".contains(q) || "onboarding".contains(q) ||
+                "guide".contains(q) || "docs".contains(q) || "license".contains(q)) {
                 SettingsSectionHeader(title = "ABOUT & INFORMATION")
                 Spacer(modifier = Modifier.height(8.dp))
 
                 SettingsGroupCard {
+                    // 1. App Info & Version (Click to open full modal)
                     SettingsItemRow(
                         icon = Icons.Default.Info,
                         title = "Minimal OS Launcher",
-                        subtitle = "v1.6.0 (Official Stable) · MD. Zarif Azfar",
+                        subtitle = "v$appVersionName (Build $appVersionCode) · Tap for architecture & details",
                         trailingContent = {
                             Box(
                                 modifier = Modifier
@@ -1244,15 +1270,79 @@ fun SettingsScreen(
                             ) {
                                 Text(text = "STABLE", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MinimalRed)
                             }
+                        },
+                        onClick = { showAboutModal = true }
+                    )
+
+                    SettingsInsetDivider()
+
+                    // 2. Developer & Creator
+                    SettingsItemRow(
+                        icon = Icons.Default.Person,
+                        title = "Developer & Creator",
+                        subtitle = "MD. Zarif Azfar (@zaryif) · Dhaka, Bangladesh",
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MinimalGray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = {
+                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/zaryif"))
+                            context.startActivity(browserIntent)
                         }
                     )
 
                     SettingsInsetDivider()
 
+                    // 3. Support & Fund Project (Buy Me a Coffee)
+                    SettingsItemRow(
+                        icon = Icons.Default.Favorite,
+                        title = "Support the Project",
+                        subtitle = "buymeacoffee.com/zaryif · Fund open-source development",
+                        trailingContent = {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MinimalRed)
+                                    .padding(horizontal = 7.dp, vertical = 3.dp)
+                            ) {
+                                Text(text = "☕ COFFEE", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MinimalOnAccent)
+                            }
+                        },
+                        onClick = {
+                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://buymeacoffee.com/zaryif"))
+                            context.startActivity(browserIntent)
+                        }
+                    )
+
+                    SettingsInsetDivider()
+
+                    // 4. App Walkthrough & Guide (Onboarding)
+                    SettingsItemRow(
+                        icon = Icons.Default.AutoAwesome,
+                        title = "App Walkthrough & Guide",
+                        subtitle = "Interactive tutorial on command gestures, hub, & philosophy",
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MinimalGray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = { showOnboardingModal = true }
+                    )
+
+                    SettingsInsetDivider()
+
+                    // 5. GitHub Releases & Source Code
                     SettingsItemRow(
                         icon = Icons.Default.Code,
-                        title = "GitHub Releases & Documentation",
-                        subtitle = "Check updates, docs, or report issues",
+                        title = "GitHub Releases & Source Code",
+                        subtitle = "github.com/zaryif/Minimal_os · Latest APKs & commits",
                         trailingContent = {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -1263,6 +1353,51 @@ fun SettingsScreen(
                         },
                         onClick = {
                             val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/zaryif/Minimal_os/releases"))
+                            context.startActivity(browserIntent)
+                        }
+                    )
+
+                    SettingsInsetDivider()
+
+                    // 6. Architecture & Documentation
+                    SettingsItemRow(
+                        icon = Icons.Default.Description,
+                        title = "Architecture & Documentation",
+                        subtitle = "BRD, SRS, SAD, MIS & Master Plan on GitHub",
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MinimalGray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = {
+                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/zaryif/Minimal_os#readme"))
+                            context.startActivity(browserIntent)
+                        }
+                    )
+
+                    SettingsInsetDivider()
+
+                    // 7. Open Source License
+                    SettingsItemRow(
+                        icon = Icons.Default.Check,
+                        title = "Open Source License",
+                        subtitle = "MIT License · 100% Free, Private & Open Forever",
+                        trailingContent = {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MinimalDarkCardBg)
+                                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(text = "MIT", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MinimalGray)
+                            }
+                        },
+                        onClick = {
+                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/zaryif/Minimal_os/blob/main/LICENSE"))
                             context.startActivity(browserIntent)
                         }
                     )
@@ -1578,6 +1713,338 @@ fun SettingsScreen(
                         ) {
                             Text(text = "SAVE COMMAND", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (newKeyword.isNotBlank() && newTarget.isNotBlank()) MinimalOnAccent else MinimalWhite)
                         }
+                    }
+                }
+            }
+        }
+
+        // =========================================================
+        // ABOUT MINIMAL OS & SYSTEM ARCHITECTURE MODAL
+        // =========================================================
+        if (showAboutModal) {
+            Dialog(onDismissRequest = { showAboutModal = false }) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MinimalCardBg)
+                        .border(1.dp, MinimalDarkGray, RoundedCornerShape(20.dp))
+                        .padding(20.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        // Header: Monogram + Title + Version + Dismiss
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MinimalDarkCardBg)
+                                    .border(1.dp, MinimalRed, RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = ">_",
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MinimalRed,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "MINIMAL OS",
+                                    fontFamily = AppleSanFranciscoFontFamily,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MinimalWhite
+                                )
+                                Text(
+                                    text = "v$appVersionName (Build $appVersionCode) · OFFICIAL",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MinimalRed
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { showAboutModal = false },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close",
+                                    tint = MinimalGray,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Manifesto / Tagline
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MinimalDarkCardBg)
+                                .border(0.5.dp, MinimalDarkGray, RoundedCornerShape(10.dp))
+                                .padding(12.dp)
+                        ) {
+                            Text(
+                                text = "An intentional, text-first, terminal-inspired Android launcher engineered to reclaim your attention and eliminate digital dopamine loops.",
+                                fontSize = 12.sp,
+                                color = MinimalWhite,
+                                lineHeight = 17.sp,
+                                fontFamily = AppleSanFranciscoFontFamily
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Developer Attribution Card
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MinimalDarkCardBg)
+                                .border(0.5.dp, MinimalDarkGray, RoundedCornerShape(10.dp))
+                                .clickable {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/zaryif"))
+                                    context.startActivity(intent)
+                                }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(MinimalRed.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = MinimalRed,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(10.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "MD. Zarif Azfar",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MinimalWhite
+                                )
+                                Text(
+                                    text = "Creator & Maintainer · @zaryif · Dhaka, BD",
+                                    fontSize = 10.sp,
+                                    color = MinimalGray
+                                )
+                            }
+
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MinimalGray,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Key Architecture & System Pillars
+                        Text(
+                            text = "CORE SYSTEM PILLARS",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MinimalRed,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        val pillars = listOf(
+                            Pair("⌨️ Unified Command Bar", "8 instant symbol triggers (@, #, -, !, *, +, :, ?) & custom alias routing."),
+                            Pair("📝 Minimal Memo & To-Dos", "Real-time search, quick-add memo bar, and zero-distraction home list."),
+                            Pair("⏱️ Live Widgets Deck", "Live Alarm Countdown, Focus Countdown, Pomodoro & Quick Aliases."),
+                            Pair("🎨 Adaptive Luminance Engine", "Dynamic MinimalOnAccent WCAG AAA contrast across all light & dark themes."),
+                            Pair("🔒 100% Private & Local-First", "Zero telemetry, offline-first, no tracking, ads, or data harvesting.")
+                        )
+
+                        pillars.forEach { (title, desc) ->
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = title,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MinimalWhite
+                                )
+                                Text(
+                                    text = desc,
+                                    fontSize = 10.sp,
+                                    color = MinimalGray,
+                                    lineHeight = 14.sp
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Technical Specifications
+                        Text(
+                            text = "TECHNICAL SPECIFICATIONS",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MinimalRed,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MinimalDarkCardBg)
+                                .border(0.5.dp, MinimalDarkGray, RoundedCornerShape(10.dp))
+                                .padding(10.dp)
+                        ) {
+                            Text(
+                                text = "• Language: Kotlin 2.0+ (Coroutines & Flows)\n• UI Framework: Jetpack Compose Material3\n• Persistence: Jetpack DataStore Preferences\n• Compatibility: Android 8.0 (API 26) to 15 (API 35)\n• License: MIT Open Source",
+                                fontSize = 10.sp,
+                                color = MinimalGray,
+                                lineHeight = 16.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Fund Project (Buy Me a Coffee)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MinimalRed)
+                                .clickable {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://buymeacoffee.com/zaryif"))
+                                    context.startActivity(intent)
+                                }
+                                .padding(vertical = 11.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "☕ FUND THE PROJECT (BUY ME A COFFEE)",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MinimalOnAccent
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // GitHub Link
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MinimalDarkCardBg)
+                                .border(1.dp, MinimalDarkGray, RoundedCornerShape(10.dp))
+                                .clickable {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/zaryif/Minimal_os"))
+                                    context.startActivity(intent)
+                                }
+                                .padding(vertical = 11.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "VIEW SOURCE ON GITHUB",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MinimalWhite
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Dismiss Button
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MinimalBlack)
+                                .border(0.5.dp, MinimalDarkGray, RoundedCornerShape(10.dp))
+                                .clickable { showAboutModal = false }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "DISMISS",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MinimalGray
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // =========================================================
+        // APP WALKTHROUGH & ONBOARDING FULLSCREEN MODAL
+        // =========================================================
+        if (showOnboardingModal) {
+            Dialog(
+                onDismissRequest = { showOnboardingModal = false },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MinimalBlack)
+                ) {
+                    OnboardingScreen(
+                        onFinish = {
+                            scope.launch {
+                                userPreferences.setOnboardingCompleted(true)
+                            }
+                            showOnboardingModal = false
+                        }
+                    )
+
+                    // Top Close Button
+                    IconButton(
+                        onClick = { showOnboardingModal = false },
+                        modifier = Modifier
+                            .statusBarsPadding()
+                            .padding(16.dp)
+                            .align(Alignment.TopEnd)
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(MinimalDarkCardBg.copy(alpha = 0.85f))
+                            .border(1.dp, MinimalDarkGray, CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close Walkthrough",
+                            tint = MinimalWhite,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }
