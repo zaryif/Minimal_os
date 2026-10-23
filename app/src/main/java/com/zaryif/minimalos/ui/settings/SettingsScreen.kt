@@ -98,6 +98,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.zaryif.minimalos.ui.components.CommandHelpDialog
 import com.zaryif.minimalos.ui.onboarding.OnboardingScreen
 import com.zaryif.minimalos.data.preferences.AiProvider
 import com.zaryif.minimalos.data.preferences.UserPreferences
@@ -152,6 +153,7 @@ fun SettingsScreen(
     var showAddCommandModal by remember { mutableStateOf(false) }
     var showAboutModal by remember { mutableStateOf(false) }
     var showOnboardingModal by remember { mutableStateOf(false) }
+    var showCommandGuideModal by remember { mutableStateOf(false) }
 
     val (appVersionName, appVersionCode) = remember(context) {
         try {
@@ -1369,6 +1371,26 @@ fun SettingsScreen(
 
                     SettingsInsetDivider()
 
+                    // 1b. Complete Command Reference & Guide (Click to check it out)
+                    SettingsItemRow(
+                        icon = Icons.Default.Terminal,
+                        title = "Command Reference & Guide",
+                        subtitle = "Browse all 16 command symbols, custom aliases, and natural syntax",
+                        trailingContent = {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MinimalRed)
+                                    .padding(horizontal = 7.dp, vertical = 3.dp)
+                            ) {
+                                Text(text = "CHECK IT OUT", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MinimalOnAccent)
+                            }
+                        },
+                        onClick = { showCommandGuideModal = true }
+                    )
+
+                    SettingsInsetDivider()
+
                     // 2. Developer & Creator
                     SettingsItemRow(
                         icon = Icons.Default.Person,
@@ -2163,6 +2185,13 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
+
+        if (showCommandGuideModal) {
+            CommandHelpDialog(
+                onDismiss = { showCommandGuideModal = false },
+                onSelectExample = { showCommandGuideModal = false }
+            )
         }
     }
 }

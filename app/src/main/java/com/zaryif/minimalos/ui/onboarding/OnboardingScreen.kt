@@ -1,8 +1,14 @@
 package com.zaryif.minimalos.ui.onboarding
 
+import android.content.Context
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,39 +27,31 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ChatBubbleOutline
-import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HourglassBottom
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.ui.platform.LocalContext
-import com.zaryif.minimalos.util.AlarmClockPermissionHelper
-import androidx.compose.ui.res.painterResource
-import com.zaryif.minimalos.R
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -66,14 +64,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zaryif.minimalos.R
 import com.zaryif.minimalos.data.preferences.UserPreferences
 import com.zaryif.minimalos.ui.components.ButtonStyle
+import com.zaryif.minimalos.ui.components.CommandHelpDialog
 import com.zaryif.minimalos.ui.components.MinimalButton
-import com.zaryif.minimalos.ui.components.MinimalCard
 import com.zaryif.minimalos.ui.theme.MinimalBlack
 import com.zaryif.minimalos.ui.theme.MinimalCardBg
 import com.zaryif.minimalos.ui.theme.MinimalDarkCardBg
@@ -84,6 +84,8 @@ import com.zaryif.minimalos.ui.theme.MinimalRed
 import com.zaryif.minimalos.ui.theme.MinimalThemeRegistry
 import com.zaryif.minimalos.ui.theme.MinimalWhite
 import com.zaryif.minimalos.ui.theme.currentActiveTheme
+import com.zaryif.minimalos.util.AlarmClockPermissionHelper
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -94,6 +96,7 @@ fun OnboardingScreen(
     val context = LocalContext.current
     val prefs = userPreferences ?: remember { UserPreferences(context) }
     var currentStep by remember { mutableIntStateOf(0) }
+    var showHelpDialog by remember { mutableStateOf(false) }
     val totalSteps = 5
 
     Box(
@@ -102,14 +105,14 @@ fun OnboardingScreen(
             .background(MinimalBlack)
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .padding(horizontal = 22.dp, vertical = 14.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Top Navigation & Step Indicator Header
+            // Top Navigation & Step Indicator Header (Zero-scroll, Apple/Google style)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 12.dp),
+                    .padding(bottom = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -140,7 +143,7 @@ fun OnboardingScreen(
                     Spacer(modifier = Modifier.width(1.dp))
                 }
 
-                // Step Dots
+                // Sleek Step Dots
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -179,409 +182,507 @@ fun OnboardingScreen(
                 ) { step ->
                     when (step) {
                         0 -> StepWelcome(onNext = { currentStep = 1 })
-                        1 -> StepCommandBar(onNext = { currentStep = 2 })
+                        1 -> StepCommandBarAnimated(
+                            onNext = { currentStep = 2 },
+                            onOpenGuide = { showHelpDialog = true }
+                        )
                         2 -> StepWidgetsDeck(onNext = { currentStep = 3 })
                         3 -> StepNotificationHub(onNext = { currentStep = 4 })
                         4 -> StepSetupWizard(
                             userPreferences = prefs,
-                            onFinish = onFinish
+                            onFinish = onFinish,
+                            onOpenGuide = { showHelpDialog = true }
                         )
                     }
                 }
             }
         }
+
+        if (showHelpDialog) {
+            CommandHelpDialog(
+                onDismiss = { showHelpDialog = false },
+                onSelectExample = { showHelpDialog = false }
+            )
+        }
     }
 }
 
 // -------------------------------------------------------------
-// STEP 1: Welcome & Philosophy
+// STEP 1: Welcome & Philosophy (100% Viewport, Zero Scrolling)
 // -------------------------------------------------------------
 @Composable
 private fun StepWelcome(onNext: () -> Unit) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.app_logo),
-            contentDescription = "Minimal OS Logo",
-            modifier = Modifier
-                .size(76.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .border(1.dp, MinimalDarkGray, RoundedCornerShape(18.dp))
-        )
-        Spacer(modifier = Modifier.height(18.dp))
-        Text(
-            text = "welcome to\nminimal os",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
-            color = MinimalWhite,
-            lineHeight = 38.sp
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = "an intentional, text-first home launcher designed to reclaim your attention and time.",
-            fontSize = 13.sp,
-            color = MinimalGray,
-            lineHeight = 18.sp
-        )
+        Column {
+            Spacer(modifier = Modifier.height(10.dp))
+            Image(
+                painter = painterResource(id = R.drawable.app_logo),
+                contentDescription = "Minimal OS Logo",
+                modifier = Modifier
+                    .size(62.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(16.dp))
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "welcome to\nminimal os",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = MinimalWhite,
+                lineHeight = 38.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "an intentional, text-first home launcher designed to reclaim your attention and time.",
+                fontSize = 13.sp,
+                color = MinimalGray,
+                lineHeight = 18.sp
+            )
+            Spacer(modifier = Modifier.height(20.dp))
 
-        Spacer(modifier = Modifier.height(24.dp))
+            // 3 Apple/Google-style clean feature highlights
+            CleanFeatureRow(
+                icon = Icons.Default.Terminal,
+                title = "Integrated Command Line",
+                subtitle = "Natural typing for tasks, notes, alarms, calls, and web queries in seconds."
+            )
+            Spacer(modifier = Modifier.height(12.dp))
 
-        FeatureHighlightCard(
-            icon = Icons.Default.Terminal,
-            title = "Type to Do Things",
-            description = "A unified command line on your home screen. Set alarms, launch timers, delete apps, search YouTube, and ask AI in under 2 seconds."
-        )
-        Spacer(modifier = Modifier.height(10.dp))
+            CleanFeatureRow(
+                icon = Icons.Default.Widgets,
+                title = "Live Cards & Widgets Deck",
+                subtitle = "High-contrast countdown timers, scratchpad memos, and modular deck cards."
+            )
+            Spacer(modifier = Modifier.height(12.dp))
 
-        FeatureHighlightCard(
-            icon = Icons.Default.Widgets,
-            title = "Live Widgets Deck",
-            description = "High-contrast modular cards: live alarm countdowns, real-time Pomodoro timers, quick memos, and native Android widgets."
-        )
-        Spacer(modifier = Modifier.height(10.dp))
+            CleanFeatureRow(
+                icon = Icons.Default.Security,
+                title = "100% Offline & Zero Telemetry",
+                subtitle = "No tracking, no cloud accounts, no ads, and strictly zero notification anxiety."
+            )
+        }
 
-        FeatureHighlightCard(
-            icon = Icons.AutoMirrored.Filled.Chat,
-            title = "Unified Notification Hub",
-            description = "One calm place for messages, calls, emails, and alerts. Swipe right from home to check everything without getting distracted."
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-
-        FeatureHighlightCard(
-            icon = Icons.Default.AutoAwesome,
-            title = "100% Local & Zero Telemetry",
-            description = "No tracking, no cloud accounts, no ads, and strictly zero emojis. Everything stays private on your device."
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
-        Spacer(modifier = Modifier.height(24.dp))
-
-        MinimalButton(
-            text = "EXPLORE FEATURES ->",
-            onClick = onNext,
-            style = ButtonStyle.PRIMARY
-        )
+        Column {
+            MinimalButton(
+                text = "GET STARTED ->",
+                onClick = onNext,
+                style = ButtonStyle.PRIMARY
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
     }
 }
 
 // -------------------------------------------------------------
-// STEP 2: The Unified Command Box
+// STEP 2: The Command Bar with Live Typewriter Animation
 // -------------------------------------------------------------
+private data class DemoCommand(
+    val triggerText: String,
+    val symbol: String,
+    val pillLabel: String,
+    val categoryBadge: String,
+    val resultTitle: String,
+    val resultSubtitle: String,
+    val icon: ImageVector
+)
+
 @Composable
-private fun StepCommandBar(onNext: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-    ) {
-        Text(
-            text = "the command box",
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
-            color = MinimalWhite
+private fun StepCommandBarAnimated(
+    onNext: () -> Unit,
+    onOpenGuide: () -> Unit
+) {
+    val demoList = remember {
+        listOf(
+            DemoCommand(
+                triggerText = "@Zaryif On my way",
+                symbol = "@",
+                pillLabel = "@Zaryif",
+                categoryBadge = "@ MESSAGE / SMS",
+                resultTitle = "Message to Zaryif",
+                resultSubtitle = "\"On my way\"",
+                icon = Icons.AutoMirrored.Filled.Chat
+            ),
+            DemoCommand(
+                triggerText = "- Finish my project",
+                symbol = "-",
+                pillLabel = "- Project",
+                categoryBadge = "- TO-DO TASK",
+                resultTitle = "To-Do Added to Home",
+                resultSubtitle = "Finish my project",
+                icon = Icons.Default.CheckCircle
+            ),
+            DemoCommand(
+                triggerText = "! Life is always good when you have Minimal OS as your default",
+                symbol = "!",
+                pillLabel = "! Note",
+                categoryBadge = "! QUICK NOTE",
+                resultTitle = "Note Saved to Scratchpad",
+                resultSubtitle = "\"Life is always good when you have Minimal OS as your default\"",
+                icon = Icons.Default.EditNote
+            ),
+            DemoCommand(
+                triggerText = "* Team meeting at 3pm",
+                symbol = "*",
+                pillLabel = "* Meeting",
+                categoryBadge = "* CALENDAR EVENT",
+                resultTitle = "Calendar Event Scheduled",
+                resultSubtitle = "Team meeting · Today at 3:00 PM",
+                icon = Icons.Default.CalendarToday
+            ),
+            DemoCommand(
+                triggerText = "#Zaryif",
+                symbol = "#",
+                pillLabel = "# Call",
+                categoryBadge = "# DIRECT CALL",
+                resultTitle = "Calling Zaryif",
+                resultSubtitle = "Connecting via phone dialer...",
+                icon = Icons.Default.Phone
+            )
         )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "a unified terminal right on your home screen. type a keyword or symbol for instant action.",
-            fontSize = 13.sp,
-            color = MinimalGray,
-            lineHeight = 18.sp
-        )
+    }
 
-        Spacer(modifier = Modifier.height(20.dp))
+    var selectedIndex by remember { mutableIntStateOf(0) }
+    var typedText by remember { mutableStateOf("") }
+    var showResultCard by remember { mutableStateOf(false) }
+    var cursorVisible by remember { mutableStateOf(true) }
 
-        Text(
-            text = "NEW & POWER COMMANDS",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = MinimalRed,
-            letterSpacing = 1.sp
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        CommandSampleCard(
-            trigger = "uninstall chatgpt",
-            description = "Uninstalls app directly via native system deletion dialog",
-            symbol = "/"
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        CommandSampleCard(
-            trigger = "assistant what is gravity",
-            description = "Sends prompt directly to Gemini, ChatGPT, Claude, or Copilot",
-            symbol = "?"
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        CommandSampleCard(
-            trigger = "yt lofi beats",
-            description = "Searches directly in the YouTube app with web fallback",
-            symbol = "$"
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        CommandSampleCard(
-            trigger = "pomo 50m",
-            description = "Parses time naturally and starts live home Pomodoro countdown",
-            symbol = "%"
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "DAILY SHORTCUTS",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = MinimalRed,
-            letterSpacing = 1.sp
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.weight(1f)) {
-                MiniSymbolItem("-", "to-do task", "- buy coffee")
-                Spacer(modifier = Modifier.height(8.dp))
-                MiniSymbolItem("@", "send sms", "@ Alex late 5m")
-                Spacer(modifier = Modifier.height(8.dp))
-                MiniSymbolItem(":", "set alarm", ": 7:30 AM")
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                MiniSymbolItem("!", "quick note", "! project idea")
-                Spacer(modifier = Modifier.height(8.dp))
-                MiniSymbolItem("#", "quick call", "# John Doe")
-                Spacer(modifier = Modifier.height(8.dp))
-                MiniSymbolItem("+", "countdown", "+ 25m")
-            }
+    // Blinking cursor loop
+    LaunchedEffect(Unit) {
+        while (true) {
+            cursorVisible = !cursorVisible
+            delay(500)
         }
+    }
 
-        Spacer(modifier = Modifier.height(18.dp))
+    // Typewriter animation cycle
+    LaunchedEffect(selectedIndex) {
+        showResultCard = false
+        typedText = ""
+        val fullText = demoList[selectedIndex].triggerText
 
-        // Terminal Superpowers Box
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(MinimalDarkCardBg)
-                .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
-                .padding(12.dp)
-        ) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.History,
-                        contentDescription = null,
-                        tint = MinimalRed,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "TERMINAL HISTORY & MARKDOWN LOGGING",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MinimalRed,
-                        letterSpacing = 1.sp
-                    )
+        // Type letter by letter
+        for (i in fullText.indices) {
+            typedText = fullText.substring(0, i + 1)
+            delay(40)
+        }
+        delay(350)
+        showResultCard = true
+
+        // Hold result card for reading, then advance
+        delay(3200)
+        selectedIndex = (selectedIndex + 1) % demoList.size
+    }
+
+    val currentDemo = demoList[selectedIndex]
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column {
+            Text(
+                text = "the command bar",
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Bold,
+                color = MinimalWhite
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "control your phone with a fast unified command line. type a symbol or natural phrase for instant action.",
+                fontSize = 13.sp,
+                color = MinimalGray,
+                lineHeight = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Interactive Tap-to-Try Pills
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                demoList.forEachIndexed { index, demo ->
+                    val isSelected = index == selectedIndex
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isSelected) MinimalRed else MinimalDarkCardBg)
+                            .border(
+                                1.dp,
+                                if (isSelected) MinimalRed else MinimalDarkGray,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .clickable { selectedIndex = index }
+                            .padding(vertical = 7.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = demo.pillLabel,
+                            fontSize = 11.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) MinimalOnAccent else MinimalWhite,
+                            fontFamily = FontFamily.Monospace,
+                            maxLines = 1
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.height(6.dp))
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Simulated Live Terminal Box
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MinimalDarkCardBg)
+                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
+                    .padding(14.dp)
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "TERMINAL INPUT",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MinimalRed,
+                            letterSpacing = 1.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(MinimalCardBg)
+                                .border(0.5.dp, MinimalDarkGray, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "LIVE DEMO",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MinimalGray,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "> ",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MinimalRed,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Text(
+                            text = typedText,
+                            fontSize = 14.sp,
+                            color = MinimalWhite,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Normal,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (cursorVisible) {
+                            Text(
+                                text = "|",
+                                fontSize = 15.sp,
+                                color = MinimalRed,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Animated Live Result Card
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(90.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showResultCard,
+                    enter = fadeIn() + slideInVertically { it / 2 },
+                    exit = fadeOut() + slideOutVertically { -it / 2 }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MinimalCardBg)
+                            .border(1.dp, MinimalRed, RoundedCornerShape(12.dp))
+                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(MinimalDarkCardBg)
+                                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(10.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = currentDemo.icon,
+                                    contentDescription = null,
+                                    tint = MinimalRed,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = currentDemo.categoryBadge,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MinimalRed,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 0.5.sp
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = currentDemo.resultTitle,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MinimalWhite
+                                )
+                                Text(
+                                    text = currentDemo.resultSubtitle,
+                                    fontSize = 11.sp,
+                                    color = MinimalGray,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Check Details / Command Guide button
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onOpenGuide() }
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.HelpOutline,
+                    contentDescription = null,
+                    tint = MinimalRed,
+                    modifier = Modifier.size(13.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "• Cycle through previous commands anytime using the on-screen Up and Down arrows.\n" +
-                            "• All commands are continuously logged to minimal_command_history.md.\n" +
-                            "• Download your full history .md file at any time in Settings.",
-                    fontSize = 11.sp,
-                    color = MinimalGray,
-                    lineHeight = 16.sp
+                    text = "CHECK COMMAND GUIDE & SHORTCUTS ->",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MinimalRed,
+                    letterSpacing = 0.5.sp,
+                    fontFamily = FontFamily.Monospace
                 )
             }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
-        Spacer(modifier = Modifier.height(24.dp))
-
-        MinimalButton(
-            text = "NEXT: WIDGETS DECK ->",
-            onClick = onNext,
-            style = ButtonStyle.PRIMARY
-        )
+        Column {
+            Text(
+                text = "Full guide is always accessible under Settings > Command Reference.",
+                fontSize = 10.sp,
+                color = MinimalGray,
+                lineHeight = 14.sp
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            MinimalButton(
+                text = "NEXT: WIDGETS DECK ->",
+                onClick = onNext,
+                style = ButtonStyle.PRIMARY
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
     }
 }
 
 // -------------------------------------------------------------
-// STEP 3: Widgets Deck & Live Countdowns
+// STEP 3: Widgets & Deck (100% Viewport, Zero Scrolling)
 // -------------------------------------------------------------
 @Composable
 private fun StepWidgetsDeck(onNext: () -> Unit) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            text = "widgets & deck",
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
-            color = MinimalWhite
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "high-contrast utility cards and real-time live widgets right on your home screen.",
-            fontSize = 13.sp,
-            color = MinimalGray,
-            lineHeight = 18.sp
-        )
+        Column {
+            Text(
+                text = "cards & deck",
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Bold,
+                color = MinimalWhite
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "swipe right from home for live countdowns, focus tools, memos, and native widgets.",
+                fontSize = 13.sp,
+                color = MinimalGray,
+                lineHeight = 18.sp
+            )
 
-        Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        FeatureHighlightCard(
-            icon = Icons.Default.Alarm,
-            title = "Live Alarm Countdown Widget",
-            description = "Pins directly to your home screen. Calculates the exact hours and minutes remaining until your next scheduled alarm rings."
-        )
-        Spacer(modifier = Modifier.height(10.dp))
+            // Compact Hero Visuals
+            HeroCardPreview(
+                icon = Icons.Default.HourglassBottom,
+                tag = "LIVE POMODORO COUNTDOWN",
+                title = "08:34",
+                subtitle = "10m focus · 5m rest session active on home screen",
+                accent = MinimalRed
+            )
+            Spacer(modifier = Modifier.height(10.dp))
 
-        FeatureHighlightCard(
-            icon = Icons.Default.HourglassBottom,
-            title = "Live Pomodoro Focus Widget",
-            description = "Work and break cycles (15m, 25m, 45m, 60m) with live play, pause, and cycle progress controls on your home screen."
-        )
-        Spacer(modifier = Modifier.height(10.dp))
+            HeroCardPreview(
+                icon = Icons.Default.CheckCircle,
+                tag = "ACTIVE TO-DO TASK",
+                title = "Finish my project",
+                subtitle = "Pinned priority task with instant strike-through",
+                accent = MinimalWhite
+            )
+            Spacer(modifier = Modifier.height(10.dp))
 
-        FeatureHighlightCard(
-            icon = Icons.Default.EditNote,
-            title = "Minimal Memo with Real-Time Search",
-            description = "Quick scratchpad for thoughts and focus tasks. Features an instant search filter and inline add bar without opening new pages."
-        )
-        Spacer(modifier = Modifier.height(10.dp))
+            HeroCardPreview(
+                icon = Icons.Default.CalendarToday,
+                tag = "CALENDAR AGENDA",
+                title = "Team sync · 4:00 PM",
+                subtitle = "Natural scheduling via '*' command or calendar view",
+                accent = MinimalWhite
+            )
 
-        FeatureHighlightCard(
-            icon = Icons.Default.Widgets,
-            title = "Native App Widget Host",
-            description = "Embed standard Android widgets (Spotify, Keep, Weather, Banking) cleanly into the card system."
-        )
+            Spacer(modifier = Modifier.height(14.dp))
 
-        Spacer(modifier = Modifier.height(18.dp))
-
-        // Gesture Guide Card
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(MinimalDarkCardBg)
-                .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
-                .padding(12.dp)
-        ) {
-            Column {
-                Text(
-                    text = "INTUITIVE GESTURE NAVIGATION",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MinimalRed,
-                    letterSpacing = 1.sp
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(text = "• Swipe Up from Home -> Full App Drawer with search", fontSize = 11.sp, color = MinimalWhite)
-                Text(text = "• Swipe Right from Home -> Unified Notification Hub", fontSize = 11.sp, color = MinimalWhite)
-                Text(text = "• Tap Header Icons -> Quick access to Memo, Clock, and Settings", fontSize = 11.sp, color = MinimalWhite)
-            }
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-        Spacer(modifier = Modifier.height(24.dp))
-
-        MinimalButton(
-            text = "NEXT: NOTIFICATION HUB ->",
-            onClick = onNext,
-            style = ButtonStyle.PRIMARY
-        )
-    }
-}
-
-// -------------------------------------------------------------
-// STEP 4: Notification Hub
-// -------------------------------------------------------------
-@Composable
-private fun StepNotificationHub(onNext: () -> Unit) {
-    val tabs = listOf("ALL", "MESSAGE", "CALLS", "EMAIL", "APPS", "FLAGGED")
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-    ) {
-        Text(
-            text = "notification hub",
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
-            color = MinimalWhite
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "messages, calls, emails, and alerts aggregated into one calm, unified stream.",
-            fontSize = 13.sp,
-            color = MinimalGray,
-            lineHeight = 18.sp
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Mock Tab Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(MinimalDarkCardBg)
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            tabs.forEachIndexed { index, tab ->
-                Text(
-                    text = tab,
-                    fontSize = 10.sp,
-                    fontWeight = if (index == 0) FontWeight.Bold else FontWeight.Normal,
-                    color = if (index == 0) MinimalRed else MinimalGray
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        MinimalCard(
-            title = "jason m.",
-            subtitle = "on my way now",
-            icon = Icons.Default.ChatBubbleOutline,
-            trailingText = "2m"
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        MinimalCard(
-            title = "sarah k.",
-            subtitle = "missed call",
-            icon = Icons.Default.Phone,
-            trailingText = "15m"
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        MinimalCard(
-            title = "team sync",
-            subtitle = "quarterly planning update",
-            icon = Icons.Default.Email,
-            trailingText = "1h"
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
-                .background(MinimalDarkCardBg)
-                .border(1.dp, MinimalDarkGray, RoundedCornerShape(10.dp))
-                .padding(12.dp)
-        ) {
-            Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MinimalDarkCardBg)
+                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(10.dp))
+                    .padding(10.dp)
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
@@ -591,67 +692,169 @@ private fun StepNotificationHub(onNext: () -> Unit) {
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "ONE SWIPE RIGHT FROM HOME",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MinimalRed,
-                        letterSpacing = 1.sp
+                        text = "Swipe Right from Home or tap 'widgets ->' anytime.",
+                        fontSize = 11.sp,
+                        color = MinimalGray
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Stop bouncing across multiple apps to check alerts. Filter by category with one tap and clear notifications with zero distraction.",
-                    fontSize = 11.sp,
-                    color = MinimalGray,
-                    lineHeight = 16.sp
-                )
             }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
-        Spacer(modifier = Modifier.height(24.dp))
-
-        MinimalButton(
-            text = "SETUP WIZARD ->",
-            onClick = onNext,
-            style = ButtonStyle.PRIMARY
-        )
+        Column {
+            MinimalButton(
+                text = "NEXT: NOTIFICATION HUB ->",
+                onClick = onNext,
+                style = ButtonStyle.PRIMARY
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
     }
 }
 
 // -------------------------------------------------------------
-// STEP 5: Interactive Setup Wizard (Preferences)
+// STEP 4: Notification Hub (100% Viewport, Zero Scrolling)
+// -------------------------------------------------------------
+@Composable
+private fun StepNotificationHub(onNext: () -> Unit) {
+    val tabs = listOf("ALL", "MESSAGE", "CALLS", "EMAIL", "APPS")
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column {
+            Text(
+                text = "notification hub",
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Bold,
+                color = MinimalWhite
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "messages, calls, and emails in one calm stream, eliminating notification anxiety.",
+                fontSize = 13.sp,
+                color = MinimalGray,
+                lineHeight = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Filter Tabs Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MinimalDarkCardBg)
+                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 6.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                tabs.forEachIndexed { index, tab ->
+                    Text(
+                        text = tab,
+                        fontSize = 10.sp,
+                        fontWeight = if (index == 0) FontWeight.Bold else FontWeight.Normal,
+                        color = if (index == 0) MinimalRed else MinimalGray,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Sample notification cards
+            NotificationSampleRow(
+                sender = "Zaryif",
+                preview = "On my way now",
+                time = "2m",
+                icon = Icons.AutoMirrored.Filled.Chat
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            NotificationSampleRow(
+                sender = "Engineering Team",
+                preview = "Meeting event: Project launch update",
+                time = "15m",
+                icon = Icons.Default.CalendarToday
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            NotificationSampleRow(
+                sender = "Zaryif",
+                preview = "Missed call",
+                time = "30m",
+                icon = Icons.Default.Phone
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MinimalDarkCardBg)
+                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(10.dp))
+                    .padding(10.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = null,
+                        tint = MinimalRed,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Swipe Left from Home or tap '<- hub' anytime.",
+                        fontSize = 11.sp,
+                        color = MinimalGray
+                    )
+                }
+            }
+        }
+
+        Column {
+            MinimalButton(
+                text = "NEXT: SETUP WIZARD ->",
+                onClick = onNext,
+                style = ButtonStyle.PRIMARY
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+
+// -------------------------------------------------------------
+// STEP 5: Interactive Setup Wizard (100% Viewport, Zero Scrolling)
 // -------------------------------------------------------------
 @Composable
 private fun StepSetupWizard(
     userPreferences: UserPreferences,
-    onFinish: () -> Unit
+    onFinish: () -> Unit,
+    onOpenGuide: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     var selectedThemeId by remember { mutableStateOf("AMOLED_RED") }
-    var enableAlarmCountdown by remember { mutableStateOf(false) }
     var enablePomodoroWidget by remember { mutableStateOf(true) }
     var enableTodosWidget by remember { mutableStateOf(true) }
     var enableNotesWidget by remember { mutableStateOf(false) }
+    var enableAlarmCountdown by remember { mutableStateOf(false) }
     var enableCommandHistory by remember { mutableStateOf(true) }
     var selectedAssistant by remember { mutableStateOf("SYSTEM_DEFAULT") }
 
-    val assistantOptions = listOf(
-        Pair("SYSTEM_DEFAULT", "System Default / Auto"),
-        Pair("com.google.android.apps.bard", "Google Gemini"),
+    val assistantPills = listOf(
+        Pair("SYSTEM_DEFAULT", "Default"),
+        Pair("com.google.android.apps.bard", "Gemini"),
         Pair("com.openai.chatgpt", "ChatGPT"),
-        Pair("com.anthropic.claude", "Claude AI"),
-        Pair("com.microsoft.copilot", "Copilot")
+        Pair("com.anthropic.claude", "Claude")
     )
 
     fun applyAndLaunch() {
         scope.launch {
-            // 1. Theme
             userPreferences.setThemeId(selectedThemeId)
 
-            // 2. Home Widgets
             val widgets = mutableListOf<String>()
             if (enableAlarmCountdown) widgets.add("ALARM_COUNTDOWN")
             if (enablePomodoroWidget) widgets.add("POMODORO")
@@ -661,442 +864,262 @@ private fun StepSetupWizard(
             widgets.add("SHORTCUTS")
             userPreferences.setHomeWidgets(widgets.distinct())
 
-            // 3. Command History
             userPreferences.setCommandHistoryEnabled(enableCommandHistory)
 
-            // 4. Assistant
             if (selectedAssistant == "SYSTEM_DEFAULT") {
                 userPreferences.setAssistantPackage(null)
             } else {
                 userPreferences.setAssistantPackage(selectedAssistant)
             }
 
-            // 5. Complete Onboarding
             userPreferences.setOnboardingCompleted(true)
-
             onFinish()
         }
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-    ) {
-        Text(
-            text = "setup wizard",
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
-            color = MinimalWhite
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = "personalize your starting experience now. you can always reconfigure these in Settings.",
-            fontSize = 13.sp,
-            color = MinimalGray,
-            lineHeight = 18.sp
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Section 1: Choose Theme
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.Palette,
-                contentDescription = null,
-                tint = MinimalRed,
-                modifier = Modifier.size(15.dp)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "1. CHOOSE YOUR PALETTE",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = MinimalRed,
-                letterSpacing = 1.sp
-            )
-        }
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            MinimalThemeRegistry.THEMES.forEach { theme ->
-                val isSelected = selectedThemeId.equals(theme.id, ignoreCase = true)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (isSelected) MinimalCardBg else MinimalDarkCardBg)
-                        .border(
-                            1.dp,
-                            if (isSelected) MinimalRed else MinimalDarkGray,
-                            RoundedCornerShape(10.dp)
-                        )
-                        .clickable {
-                            selectedThemeId = theme.id
-                            currentActiveTheme = theme
-                        }
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(14.dp)
-                                .clip(CircleShape)
-                                .background(theme.accent)
-                                .border(1.dp, theme.border, CircleShape)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = theme.name,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MinimalWhite
-                            )
-                            Text(
-                                text = "Accent ${theme.id.lowercase()}",
-                                fontSize = 10.sp,
-                                color = MinimalGray
-                            )
-                        }
-                    }
-
-                    if (isSelected) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Selected",
-                            tint = MinimalRed,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Section 2: Home Screen Live Widgets
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.Widgets,
-                contentDescription = null,
-                tint = MinimalRed,
-                modifier = Modifier.size(15.dp)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "2. HOME SCREEN LIVE WIDGETS",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = MinimalRed,
-                letterSpacing = 1.sp
-            )
-        }
-        Spacer(modifier = Modifier.height(10.dp))
-
-        WizardToggleRow(
-            title = "Live Alarm Countdown",
-            subtitle = "Displays exact countdown to next system alarm on home",
-            checked = enableAlarmCountdown,
-            onCheckedChange = { checked ->
-                enableAlarmCountdown = checked
-                if (checked && !AlarmClockPermissionHelper.canScheduleExactAlarms(context)) {
-                    AlarmClockPermissionHelper.requestExactAlarmPermission(context)
-                }
-            }
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-
-        WizardToggleRow(
-            title = "Live Pomodoro Widget",
-            subtitle = "Displays focus timer progress and live controls on home",
-            checked = enablePomodoroWidget,
-            onCheckedChange = { enablePomodoroWidget = it }
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-
-        WizardToggleRow(
-            title = "Focus To-Dos Widget",
-            subtitle = "Pins your top priority tasks directly on home screen",
-            checked = enableTodosWidget,
-            onCheckedChange = { enableTodosWidget = it }
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-
-        WizardToggleRow(
-            title = "Recent Notes Widget",
-            subtitle = "Pins your quick scratchpad thoughts on home screen",
-            checked = enableNotesWidget,
-            onCheckedChange = { enableNotesWidget = it }
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Section 3: Terminal Command History
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.Terminal,
-                contentDescription = null,
-                tint = MinimalRed,
-                modifier = Modifier.size(15.dp)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "3. TERMINAL HISTORY & EXPORT",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = MinimalRed,
-                letterSpacing = 1.sp
-            )
-        }
-        Spacer(modifier = Modifier.height(10.dp))
-
-        WizardToggleRow(
-            title = "Enable Terminal Command History",
-            subtitle = "Enables Up/Down arrow command recall and saves to minimal_command_history.md",
-            checked = enableCommandHistory,
-            onCheckedChange = { enableCommandHistory = it }
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Section 4: Digital Assistant Preference
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.SmartToy,
-                contentDescription = null,
-                tint = MinimalRed,
-                modifier = Modifier.size(15.dp)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "4. PREFERRED DIGITAL ASSISTANT",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = MinimalRed,
-                letterSpacing = 1.sp
-            )
-        }
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            assistantOptions.forEach { (pkg, label) ->
-                val isSelected = selectedAssistant == pkg
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (isSelected) MinimalCardBg else MinimalDarkCardBg)
-                        .border(
-                            1.dp,
-                            if (isSelected) MinimalRed else MinimalDarkGray,
-                            RoundedCornerShape(10.dp)
-                        )
-                        .clickable { selectedAssistant = pkg }
-                        .padding(horizontal = 12.dp, vertical = 9.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = label,
-                        fontSize = 13.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = MinimalWhite
-                    )
-                    if (isSelected) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            tint = MinimalRed,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(26.dp))
-
-        MinimalButton(
-            text = "LAUNCH MINIMAL OS ->",
-            onClick = { applyAndLaunch() },
-            style = ButtonStyle.PRIMARY
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-
-        MinimalButton(
-            text = "APPLY DEFAULTS & LAUNCH",
-            onClick = {
-                scope.launch {
-                    userPreferences.setOnboardingCompleted(true)
-                    onFinish()
-                }
-            },
-            style = ButtonStyle.SECONDARY
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-    }
-}
-
-// -------------------------------------------------------------
-// HELPER COMPONENTS
-// -------------------------------------------------------------
-@Composable
-private fun FeatureHighlightCard(
-    icon: ImageVector,
-    title: String,
-    description: String
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MinimalCardBg)
-            .border(1.dp, MinimalDarkGray, RoundedCornerShape(12.dp))
-            .padding(14.dp)
-    ) {
-        Row(verticalAlignment = Alignment.Top) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MinimalDarkCardBg)
-                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MinimalRed,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MinimalWhite
-                )
-                Spacer(modifier = Modifier.height(3.dp))
-                Text(
-                    text = description,
-                    fontSize = 11.sp,
-                    color = MinimalGray,
-                    lineHeight = 16.sp
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CommandSampleCard(
-    trigger: String,
-    description: String,
-    symbol: String
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(MinimalCardBg)
-            .border(1.dp, MinimalDarkGray, RoundedCornerShape(10.dp))
-            .padding(horizontal = 12.dp, vertical = 10.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = trigger,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                    color = MinimalWhite
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = description,
-                    fontSize = 11.sp,
-                    color = MinimalGray,
-                    lineHeight = 15.sp
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(MinimalDarkCardBg)
-                    .border(0.5.dp, MinimalRed, RoundedCornerShape(4.dp))
-                    .padding(horizontal = 7.dp, vertical = 3.dp)
-            ) {
-                Text(
-                    text = symbol,
-                    fontSize = 11.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    color = MinimalRed
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun MiniSymbolItem(
-    symbol: String,
-    label: String,
-    example: String
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MinimalCardBg)
-            .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
-            .padding(8.dp)
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
         Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "your setup",
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Bold,
+                color = MinimalWhite
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "choose your palette and widgets. you can customize everything in Settings.",
+                fontSize = 12.sp,
+                color = MinimalGray,
+                lineHeight = 16.sp
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // 1. Theme Palette Selector (Compact Horizontal)
+            Text(
+                text = "1. THEME PALETTE",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = MinimalRed,
+                letterSpacing = 1.sp
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                MinimalThemeRegistry.THEMES.forEach { theme ->
+                    val isSelected = selectedThemeId.equals(theme.id, ignoreCase = true)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isSelected) MinimalCardBg else MinimalDarkCardBg)
+                            .border(
+                                1.dp,
+                                if (isSelected) MinimalRed else MinimalDarkGray,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .clickable {
+                                selectedThemeId = theme.id
+                                currentActiveTheme = theme
+                            }
+                            .padding(vertical = 8.dp, horizontal = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(theme.accent)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = theme.name.substringBefore(" "),
+                                fontSize = 11.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = MinimalWhite,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // 2. Home Widgets (2x2 Compact Grid)
+            Text(
+                text = "2. HOME SCREEN CARDS",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = MinimalRed,
+                letterSpacing = 1.sp
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CompactWidgetChip(
+                    label = "To-Dos",
+                    active = enableTodosWidget,
+                    modifier = Modifier.weight(1f),
+                    onToggle = { enableTodosWidget = !enableTodosWidget }
+                )
+                CompactWidgetChip(
+                    label = "Pomodoro",
+                    active = enablePomodoroWidget,
+                    modifier = Modifier.weight(1f),
+                    onToggle = { enablePomodoroWidget = !enablePomodoroWidget }
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CompactWidgetChip(
+                    label = "Recent Notes",
+                    active = enableNotesWidget,
+                    modifier = Modifier.weight(1f),
+                    onToggle = { enableNotesWidget = !enableNotesWidget }
+                )
+                CompactWidgetChip(
+                    label = "Alarm Timer",
+                    active = enableAlarmCountdown,
+                    modifier = Modifier.weight(1f),
+                    onToggle = {
+                        enableAlarmCountdown = !enableAlarmCountdown
+                        if (enableAlarmCountdown && !AlarmClockPermissionHelper.canScheduleExactAlarms(context)) {
+                            AlarmClockPermissionHelper.requestExactAlarmPermission(context)
+                        }
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // 3. Command History & Assistant
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MinimalDarkCardBg)
+                    .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp))
+                    .clickable { enableCommandHistory = !enableCommandHistory }
+                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text(
-                    text = symbol,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MinimalRed,
-                    fontFamily = FontFamily.Monospace
+                    text = "Save Terminal Command History",
+                    fontSize = 11.sp,
+                    color = MinimalWhite
+                )
+                Switch(
+                    checked = enableCommandHistory,
+                    onCheckedChange = { enableCommandHistory = it },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MinimalOnAccent,
+                        checkedTrackColor = MinimalRed,
+                        uncheckedThumbColor = MinimalGray,
+                        uncheckedTrackColor = MinimalDarkCardBg
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 4. Digital Assistant Pills
+            Text(
+                text = "PREFERRED AI ASSISTANT",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = MinimalRed,
+                letterSpacing = 1.sp
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                assistantPills.forEach { (pkg, label) ->
+                    val isSelected = selectedAssistant == pkg
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isSelected) MinimalCardBg else MinimalDarkCardBg)
+                            .border(
+                                1.dp,
+                                if (isSelected) MinimalRed else MinimalDarkGray,
+                                RoundedCornerShape(6.dp)
+                            )
+                            .clickable { selectedAssistant = pkg }
+                            .padding(vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            fontSize = 10.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) MinimalRed else MinimalWhite
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Check Details / Command Guide Link
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable { onOpenGuide() }
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.HelpOutline,
+                    contentDescription = null,
+                    tint = MinimalRed,
+                    modifier = Modifier.size(12.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = label,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MinimalWhite
+                    text = "CHECK IT OUT: COMPLETE COMMAND & FEATURE GUIDE ->",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MinimalRed,
+                    letterSpacing = 0.5.sp,
+                    fontFamily = FontFamily.Monospace
                 )
             }
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = example,
-                fontSize = 10.sp,
-                color = MinimalGray,
-                fontFamily = FontFamily.Monospace
+        }
+
+        Column {
+            MinimalButton(
+                text = "LAUNCH MINIMAL OS ->",
+                onClick = { applyAndLaunch() },
+                style = ButtonStyle.PRIMARY
             )
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
 
+// -------------------------------------------------------------
+// HELPER COMPONENTS (Apple / Google Clean Viewport Design)
+// -------------------------------------------------------------
 @Composable
-private fun WizardToggleRow(
+private fun CleanFeatureRow(
+    icon: ImageVector,
     title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    subtitle: String
 ) {
     Row(
         modifier = Modifier
@@ -1104,11 +1127,25 @@ private fun WizardToggleRow(
             .clip(RoundedCornerShape(10.dp))
             .background(MinimalDarkCardBg)
             .border(1.dp, MinimalDarkGray, RoundedCornerShape(10.dp))
-            .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MinimalCardBg)
+                .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MinimalRed,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
@@ -1116,23 +1153,163 @@ private fun WizardToggleRow(
                 fontWeight = FontWeight.SemiBold,
                 color = MinimalWhite
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = subtitle,
-                fontSize = 10.sp,
+                fontSize = 11.sp,
                 color = MinimalGray,
-                lineHeight = 14.sp
+                lineHeight = 15.sp
             )
         }
-        Spacer(modifier = Modifier.width(8.dp))
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MinimalOnAccent,
-                checkedTrackColor = MinimalRed,
-                uncheckedThumbColor = MinimalGray,
-                uncheckedTrackColor = MinimalDarkCardBg
+    }
+}
+
+@Composable
+private fun HeroCardPreview(
+    icon: ImageVector,
+    tag: String,
+    title: String,
+    subtitle: String,
+    accent: Color
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(MinimalDarkCardBg)
+            .border(1.dp, MinimalDarkGray, RoundedCornerShape(10.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MinimalCardBg)
+                .border(1.dp, MinimalDarkGray, RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = tag,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MinimalRed,
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = 0.5.sp
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = title,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MinimalWhite
+                )
+                Text(
+                    text = subtitle,
+                    fontSize = 10.sp,
+                    color = MinimalGray
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationSampleRow(
+    sender: String,
+    preview: String,
+    time: String,
+    icon: ImageVector
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(MinimalDarkCardBg)
+            .border(1.dp, MinimalDarkGray, RoundedCornerShape(10.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MinimalRed,
+                modifier = Modifier.size(18.dp)
             )
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Text(
+                    text = sender,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MinimalWhite
+                )
+                Text(
+                    text = preview,
+                    fontSize = 11.sp,
+                    color = MinimalGray
+                )
+            }
+        }
+        Text(
+            text = time,
+            fontSize = 10.sp,
+            color = MinimalGray,
+            fontFamily = FontFamily.Monospace
         )
+    }
+}
+
+@Composable
+private fun CompactWidgetChip(
+    label: String,
+    active: Boolean,
+    modifier: Modifier = Modifier,
+    onToggle: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (active) MinimalCardBg else MinimalDarkCardBg)
+            .border(
+                1.dp,
+                if (active) MinimalRed else MinimalDarkGray,
+                RoundedCornerShape(8.dp)
+            )
+            .clickable { onToggle() }
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                color = MinimalWhite
+            )
+            if (active) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = MinimalRed,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
     }
 }
