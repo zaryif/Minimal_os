@@ -95,62 +95,104 @@ class ExecuteCommandUseCase(
         }
     }
 
-    private fun handleMessage(arg: String): CommandResult {
-        if (arg.isBlank()) return CommandResult.Error("Enter recipient or message")
+    private data class ResolvedMessageTarget(
+        val targetNumber: String,
+        val recipientName: String,
+        val body: String
+    )
 
-        var targetNumber = ""
-        var recipientName = ""
-        var body = ""
+    private fun resolveMessageTarget(arg: String): ResolvedMessageTarget {
+        if (arg.isBlank()) return ResolvedMessageTarget("", "", "")
 
+        // Case 1: Explicit colon separator (e.g. "@John Doe: on my way" or "wa Sarah: hello")
         if (arg.contains(":")) {
             val contactQuery = arg.substringBefore(":").trim()
-            body = arg.substringAfter(":").trim()
-            recipientName = contactQuery
+            val body = arg.substringAfter(":").trim()
             val matched = contactRepository.searchContacts(contactQuery)
-            if (matched.isNotEmpty()) {
-                targetNumber = matched.first().phoneNumber
+            val best = matched.firstOrNull()
+            return if (best != null) {
+                ResolvedMessageTarget(best.phoneNumber, best.name, body)
             } else if (contactQuery.any { it.isDigit() }) {
-                targetNumber = contactQuery
-            }
-        } else {
-            val parts = arg.split(" ", limit = 2)
-            if (parts.size >= 2) {
-                val matchedContacts = contactRepository.searchContacts(parts[0])
-                if (matchedContacts.isNotEmpty()) {
-                    targetNumber = matchedContacts.first().phoneNumber
-                    recipientName = matchedContacts.first().name
-                    body = parts[1]
-                } else if (parts[0].all { it.isDigit() || it == '+' || it == '-' }) {
-                    targetNumber = parts[0]
-                    body = parts[1]
-                } else {
-                    body = arg
-                }
+                ResolvedMessageTarget(contactQuery, contactQuery, body)
             } else {
-                val matched = contactRepository.searchContacts(arg)
-                if (matched.isNotEmpty()) {
-                    targetNumber = matched.first().phoneNumber
-                    recipientName = matched.first().name
-                } else {
-                    body = arg
-                }
+                ResolvedMessageTarget("", contactQuery, body)
             }
         }
 
+        val words = arg.split(Regex("\\s+")).filter { it.isNotBlank() }
+        if (words.isEmpty()) return ResolvedMessageTarget("", "", "")
+
+        if (words.size == 1) {
+            val single = words[0]
+            val isDigits = single.all { it.isDigit() || it == '+' || it == '-' }
+            if (isDigits && single.length >= 3) {
+                return ResolvedMessageTarget(single, single, "")
+            }
+            val matched = contactRepository.searchContacts(single)
+            val best = matched.firstOrNull()
+            return if (best != null) {
+                ResolvedMessageTarget(best.phoneNumber, best.name, "")
+            } else {
+                ResolvedMessageTarget("", "", single)
+            }
+        }
+
+        // Case 2: Multi-word greedy resolution (from longest recipient candidate down to 1 word)
+        // E.g., for "@John Doe on my way", checks "John Doe" (k=2) first and matches John Doe!
+        val maxWordsToCheck = minOf(words.size - 1, 4)
+        for (k in maxWordsToCheck downTo 1) {
+            val candidateName = words.take(k).joinToString(" ")
+            val candidates = contactRepository.searchContacts(candidateName)
+            val candLower = candidateName.lowercase()
+            val highConfidence = candidates.firstOrNull { c ->
+                val cLower = c.name.lowercase()
+                cLower == candLower ||
+                cLower.startsWith(candLower) ||
+                cLower.split(Regex("\\s+")).any { it == candLower }
+            }
+            if (highConfidence != null) {
+                val body = words.drop(k).joinToString(" ")
+                return ResolvedMessageTarget(highConfidence.phoneNumber, highConfidence.name, body)
+            }
+        }
+
+        // Case 3: First token is a phone number (e.g. "@+1234567890 hello")
+        val firstToken = words[0]
+        if (firstToken.all { it.isDigit() || it == '+' || it == '-' } && firstToken.length >= 3) {
+            val body = words.drop(1).joinToString(" ")
+            return ResolvedMessageTarget(firstToken, firstToken, body)
+        }
+
+        // Case 4: Fallback to single token search
+        val singleMatch = contactRepository.searchContacts(firstToken).firstOrNull()
+        if (singleMatch != null) {
+            val body = words.drop(1).joinToString(" ")
+            return ResolvedMessageTarget(singleMatch.phoneNumber, singleMatch.name, body)
+        }
+
+        // Default: entire input treated as body
+        return ResolvedMessageTarget("", "", arg)
+    }
+
+    private fun handleMessage(arg: String): CommandResult {
+        if (arg.isBlank()) return CommandResult.Error("Enter recipient or message")
+
+        val target = resolveMessageTarget(arg)
+
         val intent = Intent(Intent.ACTION_SENDTO).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            data = if (targetNumber.isNotEmpty()) {
-                Uri.parse("smsto:$targetNumber")
+            data = if (target.targetNumber.isNotEmpty()) {
+                Uri.parse("smsto:${target.targetNumber}")
             } else {
                 Uri.parse("smsto:")
             }
-            if (body.isNotBlank()) {
-                putExtra("sms_body", body)
+            if (target.body.isNotBlank()) {
+                putExtra("sms_body", target.body)
             }
         }
         return try {
             context.startActivity(intent)
-            val desc = if (recipientName.isNotBlank()) "Opening SMS to $recipientName…" else "Opening messages…"
+            val desc = if (target.recipientName.isNotBlank()) "Opening SMS to ${target.recipientName}…" else "Opening messages…"
             CommandResult.Success(desc)
         } catch (e: Exception) {
             CommandResult.Error("Could not open messages: ${e.message}")
@@ -160,40 +202,13 @@ class ExecuteCommandUseCase(
     private fun handleWhatsapp(arg: String): CommandResult {
         if (arg.isBlank()) return CommandResult.Error("Enter contact or message for WhatsApp")
 
-        var targetNumber = ""
-        var recipientName = ""
-        var body = ""
+        val target = resolveMessageTarget(arg)
 
-        if (arg.contains(":")) {
-            val contactQuery = arg.substringBefore(":").trim()
-            body = arg.substringAfter(":").trim()
-            recipientName = contactQuery
-            val matched = contactRepository.searchContacts(contactQuery)
-            if (matched.isNotEmpty()) {
-                targetNumber = matched.first().phoneNumber
-            } else if (contactQuery.any { it.isDigit() }) {
-                targetNumber = contactQuery
-            }
-        } else {
-            val parts = arg.split(" ", limit = 2)
-            val matchedContacts = contactRepository.searchContacts(parts[0])
-            if (matchedContacts.isNotEmpty()) {
-                targetNumber = matchedContacts.first().phoneNumber
-                recipientName = matchedContacts.first().name
-                body = if (parts.size > 1) parts[1] else ""
-            } else if (parts[0].any { it.isDigit() }) {
-                targetNumber = parts[0]
-                body = if (parts.size > 1) parts[1] else ""
-            } else {
-                body = arg
-            }
-        }
-
-        val digits = targetNumber.filter { it.isDigit() || it == '+' }
+        val digits = target.targetNumber.filter { it.isDigit() || it == '+' }
         val url = if (digits.isNotBlank()) {
-            "https://api.whatsapp.com/send?phone=$digits&text=${Uri.encode(body)}"
+            "https://api.whatsapp.com/send?phone=$digits&text=${Uri.encode(target.body)}"
         } else {
-            "https://api.whatsapp.com/send?text=${Uri.encode(body)}"
+            "https://api.whatsapp.com/send?text=${Uri.encode(target.body)}"
         }
 
         val waIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
@@ -203,7 +218,7 @@ class ExecuteCommandUseCase(
 
         return try {
             context.startActivity(waIntent)
-            val desc = if (recipientName.isNotBlank()) "Opening WhatsApp to $recipientName…" else "Opening WhatsApp…"
+            val desc = if (target.recipientName.isNotBlank()) "Opening WhatsApp to ${target.recipientName}…" else "Opening WhatsApp…"
             CommandResult.Success(desc)
         } catch (_: Exception) {
             val generalIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
@@ -225,8 +240,9 @@ class ExecuteCommandUseCase(
 
         if (phoneNumber.length < 3) {
             val contacts = contactRepository.searchContacts(arg)
-            if (contacts.isNotEmpty()) {
-                phoneNumber = contacts.first().phoneNumber
+            val best = contacts.firstOrNull()
+            if (best != null) {
+                phoneNumber = best.phoneNumber
             }
         }
 

@@ -118,7 +118,7 @@ Swipe or tap into the **Widgets Deck** to access purpose-built, high-contrast ut
 ## 3. Unified Notification Hub (Swipe Right)
 
 Stop hopping between 10 different notification shades and apps. The Hub aggregates notifications into a clean, unified stream:
-- **Category Tabs**: Filter by `ALL`, `MESSAGE`, `CALLS`, `EMAIL`, `APPS`, and `FLAGGED`.
+- **Category Tabs**: Filter by `ALL`, `MESSAGE`, `CALLS`, and `EMAIL`.
 - **Minimalist Metadata**: Clean typography, relative timestamps (`now`, `5m`, `2h`), and direct 1-tap interaction.
 - **Privacy-Minded**: Runs completely locally on your device via Android's `NotificationListenerService`.
 

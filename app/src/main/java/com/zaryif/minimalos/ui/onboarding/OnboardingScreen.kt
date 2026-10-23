@@ -719,7 +719,7 @@ private fun StepWidgetsDeck(onNext: () -> Unit) {
 // -------------------------------------------------------------
 @Composable
 private fun StepNotificationHub(onNext: () -> Unit) {
-    val tabs = listOf("ALL", "MESSAGE", "CALLS", "EMAIL", "APPS")
+    val tabs = listOf("ALL", "MESSAGE", "CALLS", "EMAIL")
 
     Column(
         modifier = Modifier.fillMaxSize(),

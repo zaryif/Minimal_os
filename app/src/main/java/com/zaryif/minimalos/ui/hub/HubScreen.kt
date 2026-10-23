@@ -66,7 +66,12 @@ fun HubScreen(
     var selectedCategory by remember { mutableStateOf(NotificationCategory.ALL) }
     val isPermissionGranted = remember { MinimalNotificationService.isPermissionGranted(context) }
 
-    val categories = NotificationCategory.entries
+    val categories = listOf(
+        NotificationCategory.ALL,
+        NotificationCategory.MESSAGE,
+        NotificationCategory.CALLS,
+        NotificationCategory.EMAIL
+    )
 
     val filteredList = remember(notifications, selectedCategory) {
         if (selectedCategory == NotificationCategory.ALL) {
@@ -118,7 +123,7 @@ fun HubScreen(
 
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "messages, calls, mail and app alerts in one list, so\nthere's one place to look rather than nine.",
+                text = "messages, calls, and email alerts in one unified list, so\nthere's one place to look rather than nine.",
                 fontSize = 13.sp,
                 color = MinimalGray,
                 lineHeight = 18.sp

@@ -20,5 +20,5 @@ enum class NotificationCategory(val displayName: String) {
     MESSAGE("MESSAGE"),
     CALLS("CALLS"),
     EMAIL("EMAIL"),
-    APPS("APPS")
+    OTHER("OTHER")
 }

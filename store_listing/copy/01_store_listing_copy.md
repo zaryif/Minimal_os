@@ -51,7 +51,7 @@ Control your device using an intuitive, natural command line:
 
 5. UNIFIED NOTIFICATION HUB
 - Swipe left into a consolidated, categorized notification center.
-- Filter incoming alerts by Messages, Calls, Email, and Apps without getting sucked into endless notification shade loops.
+- Filter incoming alerts by Messages, Calls, and Email without getting sucked into endless notification shade loops.
 - Silence notification dots and badge anxiety on your main home screen.
 
 6. PRIVACY BY ARCHITECTURE

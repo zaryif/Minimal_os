@@ -126,7 +126,7 @@ class MinimalNotificationService : NotificationListenerService() {
             lowerPkg.contains("gmail") || lowerPkg.contains("mail") ||
             lowerPkg.contains("outlook") -> NotificationCategory.EMAIL
 
-            else -> NotificationCategory.APPS
+            else -> NotificationCategory.OTHER
         }
     }
 
