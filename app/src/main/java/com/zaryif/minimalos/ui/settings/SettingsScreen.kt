@@ -825,10 +825,10 @@ fun SettingsScreen(
 
                     SettingsInsetDivider()
 
-                    // Item 3: Show All To-Dos on Home
+                    // Item 3: Show All Tasks on Home
                     SettingsItemRow(
                         icon = Icons.Default.Checklist,
-                        title = "Show All To-Dos on Home",
+                        title = "Show All Tasks on Home",
                         subtitle = if (showAllTodosPref) "Displays complete task list" else "Displays top 2 active focus tasks",
                         trailingContent = {
                             Switch(
@@ -1110,7 +1110,7 @@ fun SettingsScreen(
                     SettingsItemRow(
                         icon = Icons.Default.NotificationsActive,
                         title = "Action Confirmation Popups",
-                        subtitle = "Show transient 'Saved to-do' / 'Saved note' banner",
+                        subtitle = "Show transient 'Saved task' / 'Saved note' banner",
                         trailingContent = {
                             Switch(
                                 checked = showCommandFeedback,
@@ -2014,7 +2014,7 @@ fun SettingsScreen(
 
                         val pillars = listOf(
                             Pair("Unified Command Bar", "8 instant symbol triggers (@, #, -, !, *, +, :, ?) & custom alias routing."),
-                            Pair("Minimal Memo & To-Dos", "Real-time search, quick-add memo bar, and zero-distraction home list."),
+                            Pair("Minimal Memo & Tasks", "Real-time search, quick-add memo bar, and zero-distraction home list."),
                             Pair("Live Widgets Deck", "Live Alarm Countdown, Focus Countdown, Pomodoro & Quick Aliases."),
                             Pair("Adaptive Luminance Engine", "Dynamic MinimalOnAccent WCAG AAA contrast across all light & dark themes."),
                             Pair("100% Private & Local-First", "Zero telemetry, offline-first, no tracking, ads, or data harvesting.")

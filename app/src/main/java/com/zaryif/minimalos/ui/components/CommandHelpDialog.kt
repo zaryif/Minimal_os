@@ -147,7 +147,7 @@ fun CommandHelpDialog(
                     Triple("yt or $", "yt lofi beats", "Directly searches in YouTube app or web"),
                     Triple("pomo or %", "pomo 50m", "Starts live home screen Pomodoro countdown timer"),
                     Triple("assistant or ?", "assistant what is gravity", "Direct query to your AI Assistant (Gemini/ChatGPT/Claude)"),
-                    Triple("- or todo", "- Buy coffee beans", "Adds a focus task to your To-Do list"),
+                    Triple("- or todo", "- Buy coffee beans", "Adds a focus task to your Tasks list"),
                     Triple("! or note", "! Great app idea here", "Saves a quick note to Minimal Memo"),
                     Triple("* or event", "* Lunch with Sarah tomorrow 1pm", "Creates calendar event without opening app"),
                     Triple("+ or timer", "+ 25m", "Starts countdown timer"),

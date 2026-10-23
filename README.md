@@ -16,7 +16,7 @@
 
 *Type to do things. One hub for everything. Zero visual noise.*
 
-[Download Latest APK (v1.9.0)](https://github.com/zaryif/Minimal_os/releases/latest) • [Features](#core-features) • [Inspiration & Vision](#what-inspired-it) • [What It Solves](#what-problem-is-it-solving) • [Installation](#installation--setup)
+[Download Latest APK (v1.9.1)](https://github.com/zaryif/Minimal_os/releases/latest) • [Features](#core-features) • [Inspiration & Vision](#what-inspired-it) • [What It Solves](#what-problem-is-it-solving) • [Installation](#installation--setup)
 
 </div>
 
@@ -79,7 +79,7 @@ Type keyword or symbol + text  ->  Instant execution
 | `pomo` or `%` | **Live Pomodoro** | `pomo 50m` or `pomodoro 50 minute` | Starts real-time home screen Pomodoro countdown timer |
 | `@` or `msg` | **Direct SMS** | `@Mom on my way home` | Opens system SMS composer pre-filled to contact |
 | `#` or `call` | **Quick Call** | `#Alex` or `#+1234567890` | Instantly dials contact or raw phone number |
-| `-` or `todo` | **To-Do Item** | `-Buy milk and coffee` | Immediately adds item to your Minimal Memo to-do list |
+| `-` or `task` | **Focus Task** | `-Buy milk and coffee` | Immediately adds task to your Minimal Memo task list |
 | `!` or `note` | **Memo / Note** | `!Meeting ideas for Monday` | Saves scratch note into Minimal Memo storage |
 | `*` or `event` | **Calendar Event** | `*Flight to Tokyo tomorrow` | Launches calendar intent with pre-filled title |
 | `+` or `timer` | **Countdown Timer** | `+15m` or `timer 45s` | Starts a system countdown timer immediately |
@@ -108,7 +108,7 @@ Swipe or tap into the **Widgets Deck** to access purpose-built, high-contrast ut
 
 - **Live Pomodoro Focus Card**: Built-in 15m, 25m, 45m, and 60m focus chips, custom duration picker dialog, work/break cycle tracker, and tactile play/pause/reset controls. Can also be pinned directly onto the **Home Screen** widgets deck with live countdown controls and matching card width.
 - **Custom Alarms & Live Alarm Countdown**: Tactile custom time-picker dialog with full Hour (1–12), Minute (00–59), AM/PM toggles, and Date selection chips plus relative quick presets (`+15m`, `+30m`, `+1h`, `+8h`). Features a **Home Screen Live Alarm Countdown Widget** showing exact time remaining until the next system alarm rings.
-- **Minimal Memo with Search & Direct Creation**: Full-featured quick memos and to-dos. Includes a dedicated real-time **Search Box** to filter notes and tasks, plus a context-aware **Add Input Bar** to type and create tasks or thoughts directly without leaving the sheet.
+- **Minimal Memo with Search & Direct Creation**: Full-featured quick memos and focus tasks. Includes a dedicated real-time **Search Box** to filter notes and tasks, plus a context-aware **Add Input Bar** to type and create tasks or thoughts directly without leaving the sheet.
 - **Aliases & Shortcuts Deck**: Quick template creator and 1-tap launcher for your custom shortcuts (e.g. `yt` -> YouTube, `wifi` -> Network Settings, `gh` -> GitHub).
 - **Countdown Timers**: Quick-tap timer presets (`1m`, `5m`, `10m`, `15m`, `25m`) that trigger native Android alarms.
 - **Native App Widget Host**: Pin standard Android app widgets (Spotify, Google Keep, Weather) directly into the Minimal OS card system.

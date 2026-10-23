@@ -256,9 +256,9 @@ class ExecuteCommandUseCase(
     }
 
     private fun handleTodo(arg: String): CommandResult {
-        if (arg.isBlank()) return CommandResult.Error("Enter to-do task")
+        if (arg.isBlank()) return CommandResult.Error("Enter task")
         storageRepository.addTodo(arg)
-        return CommandResult.Success("Saved to-do: $arg")
+        return CommandResult.Success("Saved task: $arg")
     }
 
     private fun handleNote(arg: String): CommandResult {
@@ -990,7 +990,7 @@ class ExecuteCommandUseCase(
     private fun handleHelp(): CommandResult {
         val helpList = listOf(
             Pair("help or ~", "Show this complete commands and guide cheat sheet"),
-            Pair("- or todo", "- Buy groceries — add item to Focus To-Dos"),
+            Pair("- or todo", "- Buy groceries — add item to Focus Tasks"),
             Pair("! or note", "! Ideas for project — save note to Minimal Memo"),
             Pair("* or event", "* Meeting tomorrow at 3pm — add to Calendar"),
             Pair("+ or timer", "+ 25m or timer 15 mins — set countdown timer"),

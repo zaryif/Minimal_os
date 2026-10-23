@@ -1,6 +1,9 @@
 package com.zaryif.minimalos.ui.onboarding
 
 import android.content.Context
+import android.content.Intent
+import android.provider.Settings
+import com.zaryif.minimalos.service.MinimalNotificationService
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -309,8 +312,8 @@ private fun StepCommandBarAnimated(
                 triggerText = "- Finish my project",
                 symbol = "-",
                 pillLabel = "- Project",
-                categoryBadge = "- TO-DO TASK",
-                resultTitle = "To-Do Added to Home",
+                categoryBadge = "- TASK",
+                resultTitle = "Task Added to Home",
                 resultSubtitle = "Finish my project",
                 icon = Icons.Default.CheckCircle
             ),
@@ -658,7 +661,7 @@ private fun StepWidgetsDeck(onNext: () -> Unit) {
 
             HeroCardPreview(
                 icon = Icons.Default.CheckCircle,
-                tag = "ACTIVE TO-DO TASK",
+                tag = "ACTIVE TASK",
                 title = "Finish my project",
                 subtitle = "Pinned priority task with instant strike-through",
                 accent = MinimalWhite
@@ -786,7 +789,47 @@ private fun StepNotificationHub(onNext: () -> Unit) {
                 icon = Icons.Default.Phone
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
+            val context = LocalContext.current
+            val isNotifGranted = remember { MinimalNotificationService.isPermissionGranted(context) }
+            if (!isNotifGranted) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MinimalCardBg)
+                        .border(1.dp, MinimalRed, RoundedCornerShape(8.dp))
+                        .clickable { launchNotificationAccess(context) }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Security,
+                            contentDescription = null,
+                            tint = MinimalRed,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Grant Notification Access",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MinimalWhite
+                        )
+                    }
+                    Text(
+                        text = "GRANT ->",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MinimalRed,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
 
             Box(
                 modifier = Modifier
@@ -838,7 +881,7 @@ private fun StepSetupWizard(
 
     var selectedThemeId by remember { mutableStateOf("AMOLED_RED") }
     var enablePomodoroWidget by remember { mutableStateOf(true) }
-    var enableTodosWidget by remember { mutableStateOf(true) }
+    var enableTasksWidget by remember { mutableStateOf(true) }
     var enableNotesWidget by remember { mutableStateOf(false) }
     var enableAlarmCountdown by remember { mutableStateOf(false) }
     var enableCommandHistory by remember { mutableStateOf(true) }
@@ -858,7 +901,7 @@ private fun StepSetupWizard(
             val widgets = mutableListOf<String>()
             if (enableAlarmCountdown) widgets.add("ALARM_COUNTDOWN")
             if (enablePomodoroWidget) widgets.add("POMODORO")
-            if (enableTodosWidget) widgets.add("TODOS")
+            if (enableTasksWidget) widgets.add("TODOS")
             if (enableNotesWidget) widgets.add("NOTES")
             widgets.add("CALENDAR")
             widgets.add("SHORTCUTS")
@@ -873,6 +916,11 @@ private fun StepSetupWizard(
             }
 
             userPreferences.setOnboardingCompleted(true)
+
+            if (!isDefaultLauncher(context)) {
+                launchSetDefaultHome(context)
+            }
+
             onFinish()
         }
     }
@@ -884,23 +932,126 @@ private fun StepSetupWizard(
         Column {
             Text(
                 text = "your setup",
-                fontSize = 30.sp,
+                fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = MinimalWhite
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "choose your palette and widgets. you can customize everything in Settings.",
-                fontSize = 12.sp,
+                text = "set as default, grant permissions, and choose your palette.",
+                fontSize = 11.sp,
                 color = MinimalGray,
-                lineHeight = 16.sp
+                lineHeight = 15.sp
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // 1. Theme Palette Selector (Compact Horizontal)
+            // 1. System Perfection: Default Launcher & Hub Permissions
             Text(
-                text = "1. THEME PALETTE",
+                text = "1. SYSTEM PERFECTION & DEFAULT",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = MinimalRed,
+                letterSpacing = 1.sp
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val isDefault = isDefaultLauncher(context)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isDefault) MinimalCardBg else MinimalDarkCardBg)
+                        .border(
+                            1.dp,
+                            if (isDefault) MinimalRed else MinimalDarkGray,
+                            RoundedCornerShape(8.dp)
+                        )
+                        .clickable { launchSetDefaultHome(context) }
+                        .padding(horizontal = 10.dp, vertical = 7.dp)
+                ) {
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Default Launcher",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MinimalWhite
+                            )
+                            if (isDefault) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = MinimalRed,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            text = if (isDefault) "active default" else "tap to set default",
+                            fontSize = 9.sp,
+                            color = if (isDefault) MinimalRed else MinimalGray
+                        )
+                    }
+                }
+
+                val hasNotif = MinimalNotificationService.isPermissionGranted(context)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (hasNotif) MinimalCardBg else MinimalDarkCardBg)
+                        .border(
+                            1.dp,
+                            if (hasNotif) MinimalRed else MinimalDarkGray,
+                            RoundedCornerShape(8.dp)
+                        )
+                        .clickable { launchNotificationAccess(context) }
+                        .padding(horizontal = 10.dp, vertical = 7.dp)
+                ) {
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Notification Hub",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MinimalWhite
+                            )
+                            if (hasNotif) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = MinimalRed,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            text = if (hasNotif) "access granted" else "tap to grant access",
+                            fontSize = 9.sp,
+                            color = if (hasNotif) MinimalRed else MinimalGray
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 2. Theme Palette Selector (Compact Horizontal)
+            Text(
+                text = "2. THEME PALETTE",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 color = MinimalRed,
@@ -928,7 +1079,7 @@ private fun StepSetupWizard(
                                 selectedThemeId = theme.id
                                 currentActiveTheme = theme
                             }
-                            .padding(vertical = 8.dp, horizontal = 6.dp),
+                            .padding(vertical = 7.dp, horizontal = 6.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -951,11 +1102,11 @@ private fun StepSetupWizard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // 2. Home Widgets (2x2 Compact Grid)
+            // 3. Home Widgets (2x2 Compact Grid)
             Text(
-                text = "2. HOME SCREEN CARDS",
+                text = "3. HOME SCREEN CARDS",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 color = MinimalRed,
@@ -965,10 +1116,10 @@ private fun StepSetupWizard(
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 CompactWidgetChip(
-                    label = "To-Dos",
-                    active = enableTodosWidget,
+                    label = "Tasks",
+                    active = enableTasksWidget,
                     modifier = Modifier.weight(1f),
-                    onToggle = { enableTodosWidget = !enableTodosWidget }
+                    onToggle = { enableTasksWidget = !enableTasksWidget }
                 )
                 CompactWidgetChip(
                     label = "Pomodoro",
@@ -1311,5 +1462,57 @@ private fun CompactWidgetChip(
                 )
             }
         }
+    }
+}
+
+private fun isDefaultLauncher(context: Context): Boolean {
+    return try {
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        val resolveInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            context.packageManager.resolveActivity(
+                intent,
+                android.content.pm.PackageManager.ResolveInfoFlags.of(android.content.pm.PackageManager.MATCH_DEFAULT_ONLY.toLong())
+            )
+        } else {
+            context.packageManager.resolveActivity(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+        }
+        resolveInfo?.activityInfo?.packageName == context.packageName
+    } catch (_: Exception) {
+        false
+    }
+}
+
+private fun launchSetDefaultHome(context: Context) {
+    try {
+        val intent = Intent(Settings.ACTION_HOME_SETTINGS).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        try {
+            val intent = Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            val intent = Intent(Settings.ACTION_SETTINGS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        }
+    }
+}
+
+private fun launchNotificationAccess(context: Context) {
+    try {
+        val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        val intent = Intent(Settings.ACTION_SETTINGS).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
     }
 }

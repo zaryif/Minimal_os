@@ -74,7 +74,7 @@ fun MinimalMemoSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val notes by storageRepository.notes.collectAsState()
     val todos by storageRepository.todos.collectAsState()
-    var selectedTab by remember { mutableStateOf("TO-DO") }
+    var selectedTab by remember { mutableStateOf("TASKS") }
     var searchQuery by remember { mutableStateOf("") }
     var newItemText by remember { mutableStateOf("") }
     var showCustomTimerDialog by remember { mutableStateOf(false) }
@@ -98,7 +98,7 @@ fun MinimalMemoSheet(
                 executeCommandUseCase?.execute("+" + trimmed.removePrefix("timer ").trim())
             } else if (trimmed.startsWith("pomo", ignoreCase = true)) {
                 executeCommandUseCase?.execute("+pomo")
-            } else if (selectedTab == "TO-DO") {
+            } else if (selectedTab == "TASKS") {
                 storageRepository.addTodo(trimmed)
             } else {
                 storageRepository.addNote(trimmed)
@@ -170,18 +170,18 @@ fun MinimalMemoSheet(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Tabs: TO-DO vs NOTES
+            // Tabs: TASKS vs NOTES
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "TO-DO (${todos.size})",
+                    text = "TASKS (${todos.size})",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (selectedTab == "TO-DO") MinimalRed else MinimalGray,
-                    modifier = Modifier.clickable { selectedTab = "TO-DO" }
+                    color = if (selectedTab == "TASKS") MinimalRed else MinimalGray,
+                    modifier = Modifier.clickable { selectedTab = "TASKS" }
                 )
                 Text(
                     text = "NOTES (${notes.size})",
@@ -215,7 +215,7 @@ fun MinimalMemoSheet(
                 Box(modifier = Modifier.weight(1f)) {
                     if (searchQuery.isEmpty()) {
                         Text(
-                            text = if (selectedTab == "TO-DO") "Search to-dos…" else "Search notes…",
+                            text = if (selectedTab == "TASKS") "Search tasks…" else "Search notes…",
                             style = TextStyle(fontSize = 13.sp, color = MinimalGray)
                         )
                     }
@@ -260,7 +260,7 @@ fun MinimalMemoSheet(
                 Box(modifier = Modifier.weight(1f)) {
                     if (newItemText.isEmpty()) {
                         Text(
-                            text = if (selectedTab == "TO-DO") "add new task (press enter)…" else "write new note (press enter)…",
+                            text = if (selectedTab == "TASKS") "add new task (press enter)…" else "write new note (press enter)…",
                             style = TextStyle(fontSize = 13.sp, color = MinimalGray)
                         )
                     }
@@ -292,11 +292,11 @@ fun MinimalMemoSheet(
             Spacer(modifier = Modifier.height(14.dp))
 
             // 3. Tab Contents
-            if (selectedTab == "TO-DO") {
+            if (selectedTab == "TASKS") {
                 if (filteredTodos.isEmpty()) {
                     Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Text(
-                            text = if (searchQuery.isNotEmpty()) "No to-dos matching \"$searchQuery\"" else "No to-dos yet. Type above to add your first task.",
+                            text = if (searchQuery.isNotEmpty()) "No tasks matching \"$searchQuery\"" else "No tasks yet. Type above to add your first task.",
                             fontSize = 13.sp,
                             color = MinimalGray
                         )

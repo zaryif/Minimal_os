@@ -9,7 +9,7 @@ Minimal OS is designed with a strict offline-first, zero-telemetry architecture.
 
 ## 2. Information Handled Locally on Your Device
 All information created or handled by the user remains entirely on the local device storage:
-- To-Do Items and Notes: Stored locally in private application sandbox storage using encrypted Android DataStore and SQLite databases.
+- Tasks and Notes: Stored locally in private application sandbox storage using encrypted Android DataStore and SQLite databases.
 - Command History: Stored locally if enabled in settings and never transmitted to external servers.
 - Pinned Apps and Theme Settings: Stored strictly on device.
 
