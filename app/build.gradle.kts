@@ -10,13 +10,13 @@ plugins {
 
 android {
     namespace = "com.zaryif.minimalos"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.minimal.os"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 19
+        targetSdk = 36
+        versionCode = 20
         versionName = "1.8.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
