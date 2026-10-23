@@ -30,10 +30,13 @@ store_listing/
 │       ├── 08_widgets_deck.png                # Unified widgets deck dashboard
 │       ├── 09_settings_and_themes.png         # Deep settings and customization options
 │       └── 10_notification_hub.png            # Unified notification hub
-├── video/                                     # High-definition promotional marketing videos
-│   ├── minimal_os_marketing_vertical_9x16.mp4 # 9:16 Vertical (Shorts, Reels, TikTok, Play Store preview)
-│   └── minimal_os_marketing_landscape_16x9.mp4 # 16:9 Landscape (YouTube, Play Store desktop/tablet)
-├── generate_marketing_video.py                # Automated video generator script with voice-over & subtitles
+├── video/                                     # High-definition promotional and showcase videos
+│   ├── minimal_os_marketing_vertical_9x16.mp4 # 9:16 Vertical app overview (Shorts, Reels, Play Store)
+│   ├── minimal_os_marketing_landscape_16x9.mp4 # 16:9 Landscape app overview (YouTube, Play Store)
+│   ├── minimal_os_command_showcase_vertical_9x16.mp4 # 9:16 Vertical Command Bar & Alias deep dive
+│   └── minimal_os_command_showcase_landscape_16x9.mp4 # 16:9 Landscape Command Bar & Alias deep dive
+├── generate_marketing_video.py                # Automated marketing overview video generator script
+├── generate_command_showcase_video.py         # Command Bar typing & execution showcase video generator script
 └── screenshots_real/                          # Complete raw captures archive from running device
 ```
 
