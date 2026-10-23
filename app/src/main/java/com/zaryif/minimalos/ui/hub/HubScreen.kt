@@ -5,6 +5,8 @@ import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,8 +71,6 @@ fun HubScreen(
     val filteredList = remember(notifications, selectedCategory) {
         if (selectedCategory == NotificationCategory.ALL) {
             notifications
-        } else if (selectedCategory == NotificationCategory.FLAGGED) {
-            notifications.filter { it.isFlagged }
         } else {
             notifications.filter { it.category == selectedCategory }
         }
@@ -146,24 +146,27 @@ fun HubScreen(
             // Category Filter Tabs
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 categories.forEach { cat ->
                     val isSelected = cat == selectedCategory
                     val count = if (cat == NotificationCategory.ALL) {
                         notifications.size
-                    } else if (cat == NotificationCategory.FLAGGED) {
-                        notifications.count { it.isFlagged }
                     } else {
                         notifications.count { it.category == cat }
                     }
 
                     Text(
                         text = if (count > 0) "${cat.displayName} ($count)" else cat.displayName,
-                        fontSize = 11.sp,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp,
                         color = if (isSelected) MinimalWhite else MinimalGray,
-                        modifier = Modifier.clickable { selectedCategory = cat }
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { selectedCategory = cat }
+                            .padding(vertical = 4.dp, horizontal = 2.dp)
                     )
                 }
             }

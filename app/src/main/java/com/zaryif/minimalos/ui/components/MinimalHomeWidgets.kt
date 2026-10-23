@@ -191,7 +191,7 @@ fun MinimalHomeTodosWidget(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "to-do",
+                            text = "tasks",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = MinimalWhite,

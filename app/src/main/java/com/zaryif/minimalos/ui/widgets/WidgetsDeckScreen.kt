@@ -563,7 +563,7 @@ private fun RabbitTodoCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "to-dos",
+                        text = "tasks",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = MinimalWhite,

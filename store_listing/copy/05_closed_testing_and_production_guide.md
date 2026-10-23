@@ -44,8 +44,8 @@ Under the **Testers** tab at the bottom, find the section **How testers join you
 
 ### Step 4: Create a Release in Closed Testing
 1. In the Closed testing track, click **Create new release**.
-2. Upload the signed `.aab` file (`app-release.aab` from `app/build/outputs/bundle/release/app-release.aab`).
-3. Set Release Name: `1.8.0` (Build 20).
+2. Upload the signed `.aab` file: `Minimal_OS_v1.9.0_b21.aab` (located on your Desktop at `Minimal_OS_Store_Listing/Minimal_OS_v1.9.0_b21.aab` or in `store_listing/Minimal_OS_v1.9.0_b21.aab`).
+3. Set Release Name: `1.9.0` (Build 21).
 4. Paste the Release Notes from `store_listing/copy/06_release_notes.md`.
 5. Click **Next**, review errors/warnings, and click **Save and send for review**.
 

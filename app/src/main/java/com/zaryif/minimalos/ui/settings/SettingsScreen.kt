@@ -692,7 +692,7 @@ fun SettingsScreen(
 
                     // Item 2: Home Widgets Layout & Order
                     val allHomeWidgetOptions = listOf(
-                        Pair("TODOS", "to-dos (active focus tasks)"),
+                        Pair("TODOS", "tasks (active focus tasks)"),
                         Pair("NOTES", "notes (recent memos)"),
                         Pair("CALENDAR", "calendar (glance & schedule)"),
                         Pair("SHORTCUTS", "shortcuts (favorite pinned apps)"),
@@ -877,7 +877,7 @@ fun SettingsScreen(
 
                 val allDeckWidgetOptions = listOf(
                     Pair("NOTES", "notes card"),
-                    Pair("TODOS", "to-dos card"),
+                    Pair("TODOS", "tasks card"),
                     Pair("CALENDAR", "schedule & events card"),
                     Pair("POMODORO", "pomodoro focus card"),
                     Pair("ALARMS", "alarm clock card"),
