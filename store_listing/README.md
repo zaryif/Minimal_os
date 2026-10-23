@@ -34,9 +34,13 @@ store_listing/
 │   ├── minimal_os_marketing_vertical_9x16.mp4 # 9:16 Vertical app overview (Shorts, Reels, Play Store)
 │   ├── minimal_os_marketing_landscape_16x9.mp4 # 16:9 Landscape app overview (YouTube, Play Store)
 │   ├── minimal_os_command_showcase_vertical_9x16.mp4 # 9:16 Vertical Command Bar & Alias deep dive
-│   └── minimal_os_command_showcase_landscape_16x9.mp4 # 16:9 Landscape Command Bar & Alias deep dive
+│   ├── minimal_os_command_showcase_landscape_16x9.mp4 # 16:9 Landscape Command Bar & Alias deep dive
+│   ├── minimal_os_virtual_phone_code_vertical_9x16.mp4 # 9:16 Vertical real app & code architecture showcase
+│   └── minimal_os_virtual_phone_code_landscape_16x9.mp4 # 16:9 Landscape real app & code architecture showcase
 ├── generate_marketing_video.py                # Automated marketing overview video generator script
 ├── generate_command_showcase_video.py         # Command Bar typing & execution showcase video generator script
+├── generate_virtual_phone_code_showcase.py    # Real virtual phone & code architecture video generator script
+├── capture_real_emulator_states.py            # Automated ADB script capturing live emulator states
 └── screenshots_real/                          # Complete raw captures archive from running device
 ```
 
